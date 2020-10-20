@@ -1264,6 +1264,7 @@ void warn_about_deprecated_binary(THD *thd)
 
 %token<lexer.keyword> ENGINE_ATTRIBUTE_SYM 1154         /* MYSQL */
 %token<lexer.keyword> SECONDARY_ENGINE_ATTRIBUTE_SYM 1155 /* MYSQL */
+%token<lexer.keyword> ROUTE_SYM 1162                    /* MYSQL-FUNC : MySQL extension, function */
 
 /*
   Precedence rules used to resolve the ambiguity when using keywords as idents
@@ -10480,6 +10481,10 @@ sum_expr:
         | MIN_SYM '(' in_sum_expr ')' opt_windowing_clause
           {
             $$= NEW_PTN Item_sum_min(@$, $3, $5);
+          }
+        | ROUTE_SYM '(' in_sum_expr ')' opt_windowing_clause
+          {
+            $$= NEW_PTN Item_sum_route(@$, $3, false, $5);
           }
         /*
           According to ANSI SQL, DISTINCT is allowed and has

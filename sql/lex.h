@@ -806,6 +806,7 @@ static const SYMBOL symbols[] = {
     {SYM_FN("MIN", MIN_SYM)},
     {SYM_FN("NOW", NOW_SYM)},
     {SYM_FN("POSITION", POSITION_SYM)},
+    {SYM_FN("ROUTE", ROUTE_SYM)},
     {SYM_FN("SESSION_USER", USER)},
     {SYM_FN("STD", STD_SYM)},
     {SYM_FN("STDDEV", STD_SYM)},

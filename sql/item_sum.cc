@@ -6177,3 +6177,42 @@ bool Item_rollup_sum_switcher::aggregator_setup(THD *thd) {
   }
   return false;
 }
+
+
+bool Item_sum_route::add() {
+  String value{"", 0, collation.collation};
+  DBUG_LOG("Routing", "Argument 0 name: " << args[0]->full_name());
+  DBUG_LOG("Routing", "Self type: " << result_type());
+  DBUG_LOG("Routing", "STRING_RESULT: " << STRING_RESULT);
+  DBUG_LOG("Routing", "INVALID_RESULT: " << INVALID_RESULT);
+  DBUG_LOG("Routing", "REAL_RESULT: " << REAL_RESULT);
+  DBUG_LOG("Routing", "INT_RESULT: " << INT_RESULT);
+  DBUG_LOG("Routing", "ROW_RESULT: " << ROW_RESULT);
+  DBUG_LOG("Routing", "DECIMAL_RESULT: " << DECIMAL_RESULT);
+  DBUG_LOG("Routing", " # ");
+
+  if (Item_sum_sum::add()) return true;
+  return false;
+}
+
+
+double Item_sum_route::val_real() {
+  DBUG_ASSERT(fixed == 1);
+  aggr->endup();
+  return 12;
+}
+
+
+my_decimal *Item_sum_route::val_decimal(my_decimal *val) {
+  DBUG_TRACE;
+}
+
+String *Item_sum_route::val_str(String *str) {
+  if (aggr) aggr->endup();
+
+  String value{"Hello", 5, collation.collation};
+  return &value;
+  
+  
+  //return val_string_from_real(str);
+}

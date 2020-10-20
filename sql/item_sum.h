@@ -454,7 +454,8 @@ class Item_sum : public Item_result_field {
     LEAD_LAG_FUNC,
     FIRST_LAST_VALUE_FUNC,
     NTH_VALUE_FUNC,
-    ROLLUP_SUM_SWITCHER_FUNC
+    ROLLUP_SUM_SWITCHER_FUNC,
+    ROUTE_FUNC
   };
 
   /**
@@ -2759,6 +2760,36 @@ class Item_rollup_sum_switcher final : public Item_sum {
 
   const int m_num_levels;
   int m_current_rollup_level = INT_MAX;
+};
+
+class Item_sum_route final : public Item_sum_sum {
+ public:
+  String m_tmp;
+
+  //Item_sum_route(Item a*) : Item_sum(a) { m_tmp = String("", 0, collation.collation); }
+
+  Item_sum_route(const POS &pos, Item *item_par, bool distinct, PT_window *w)
+      : Item_sum_sum(pos, item_par, distinct, w) { 
+        set_data_type_geometry();
+        m_tmp = String("", 0, collation.collation); 
+      }
+
+  /*
+  Item_sum_route(THD *thd, Item_sum_route *item)
+      : Item_sum_sum(thd, item), prec_increment(item->prec_increment) {}
+  */
+
+  enum Sumfunctype sum_func() const override {
+    return ROUTE_FUNC;
+  }
+  bool add() override;
+  double val_real() override;
+  // In SPs we might force the "wrong" type with select into a declare variable
+  longlong val_int() override { return llrint_with_overflow_check(val_real()); }
+  my_decimal *val_decimal(my_decimal *) override;
+  String *val_str(String *str) override;
+  const char *func_name() const override { return "route"; }
+  Item_result result_type() const override { return STRING_RESULT; }
 };
 
 #endif /* ITEM_SUM_INCLUDED */
