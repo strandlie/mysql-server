@@ -33,6 +33,10 @@
 #include <map>
 #include <memory>
 #include <string>
+#include <boost/graph/graph_traits.hpp>
+#include <boost/graph/adjacency_list.hpp>
+#include <boost/graph/dijkstra_shortest_paths.hpp>
+#include <boost/property_map/property_map.hpp>
 
 #include "field_types.h"  // enum_field_types
 #include "m_ctype.h"
@@ -62,6 +66,8 @@
 #include "sql/window_lex.h"
 #include "sql_string.h"
 #include "template_utils.h"
+
+
 
 class Field;
 class Item_sum;
@@ -2762,22 +2768,28 @@ class Item_rollup_sum_switcher final : public Item_sum {
   int m_current_rollup_level = INT_MAX;
 };
 
-class Item_sum_route final : public Item_sum_sum {
- public:
-  String m_tmp;
 
-  //Item_sum_route(Item a*) : Item_sum(a) { m_tmp = String("", 0, collation.collation); }
+namespace b = boost;
+class Item_sum_route final : public Item_sum_sum {
+public:
+  String m_tmp;
+  typedef b::adjacency_list<b::listS, b::vecS, b::directedS, b::no_property, b::property<b::edge_weight_t, int> > Graph;
+  typedef b::graph_traits<Graph>::vertex_descriptor Vertex;
+  typedef std::pair<int, int> Edge;
+
+  Graph G;
+
+  const char* name = "ABCDE";
+  enum { A, B, C, D, E, N };
 
   Item_sum_route(const POS &pos, Item *item_par, bool distinct, PT_window *w)
-      : Item_sum_sum(pos, item_par, distinct, w) { 
+      : Item_sum_sum(pos, item_par, distinct, w)/*, G()*/ {
         set_data_type_geometry();
-        m_tmp = String("", 0, collation.collation); 
+        m_tmp = String("", 0, collation.collation);
+
+
       }
 
-  /*
-  Item_sum_route(THD *thd, Item_sum_route *item)
-      : Item_sum_sum(thd, item), prec_increment(item->prec_increment) {}
-  */
 
   enum Sumfunctype sum_func() const override {
     return ROUTE_FUNC;
