@@ -81,6 +81,7 @@
 #include "sql/thr_malloc.h"
 #include "sql/uniques.h"  // Unique
 #include "sql/window.h"
+#include "sql/routing/graph_routing.h"
 
 using std::max;
 using std::min;
@@ -6181,7 +6182,7 @@ bool Item_rollup_sum_switcher::aggregator_setup(THD *thd) {
 
 bool Item_sum_route::add() {
   String value{"", 0, collation.collation};
-  DBUG_LOG("Routing", "Argument 0: " << args[0]->val_int());
+  DBUG_LOG("Routing", "Argument 0: " << args[0]->val_int() << ", argument 1: " << args[1]->val_int());
   if (Item_sum_sum::add()) return true;
   return false;
 }
@@ -6200,41 +6201,7 @@ my_decimal *Item_sum_route::val_decimal(my_decimal *val) {
 
 String *Item_sum_route::val_str(String *str) {
   if (aggr) aggr->endup();
-  using namespace boost;
-  // Vector for storing distance property
-  std::vector<int> d(num_vertices(G));
 
-  // Get the first vertex
-  Vertex s = *(vertices(G).first);
-  DBUG_LOG("Routing", "Source: " << name[s]);
-
-  // Invoke variant 2 of Dijkstra's algorithm
-  dijkstra_shortest_paths(G, s, distance_map(&d[0]));
-
-  // Get the property map for vertex indices
-  typedef property_map<Graph, vertex_index_t>::type IndexMap;
-  IndexMap index = get(vertex_index, G);
-
-  DBUG_LOG("Routing", "Distances from start vertex: " << name[index(s)]);
-  graph_traits<Graph>::vertex_iterator vi;
-  for(vi = vertices(G).first; vi != vertices(G).second; ++vi) {
-    DBUG_LOG("Routing", "distance(" << name[index(*vi)] << ") = " << d[*vi]);
-  }
-
-  using std::vector;
-
-  vector<Vertex> p(num_vertices(G), graph_traits<Graph>::null_vertex()); // The predecessor array
-  dijkstra_shortest_paths(G, s, distance_map(&d[0]).predecessor_map(&p[0]);
-
-  DBUG_LOG("Routing", "Parents in the tree of shortest paths: ");
-  for(vi = vertices(G).first; vi != vertices(G).second; ++vi) {
-    DBUG_LOG("Routing", "parent(" << name[*vi]);
-    if(p[*vi] == graph_traits<Graph>::null_vertex()) {
-      DBUG_LOG("Routing", ") = no parent");
-    } else {
-      DBUG_LOG("Routing", ") = " << name[p[*vi]]);
-    }
-  }
   String value{"Hello", 5, collation.collation};
   return &value;
 

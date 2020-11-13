@@ -567,6 +567,7 @@ SET(SQL_SHARED_SOURCES
   tztime.cc
   uniques.cc
   xa.cc
+  routing/graph_routing.cc
 )
 
 # BISON_TARGET(<Name> <YaccInput> <CodeOutput>
