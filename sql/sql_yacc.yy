@@ -10482,9 +10482,9 @@ sum_expr:
           {
             $$= NEW_PTN Item_sum_min(@$, $3, $5);
           }
-        | ROUTE_SYM '(' in_sum_expr ')' opt_windowing_clause
+        | ROUTE_SYM '(' expr_list ')' opt_windowing_clause
           {
-            $$= NEW_PTN Item_sum_route(@$, $3, false, $5);
+            $$= NEW_PTN Item_sum_route(@$, $3, $5);
           }
         /*
           According to ANSI SQL, DISTINCT is allowed and has

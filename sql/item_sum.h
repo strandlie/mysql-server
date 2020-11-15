@@ -2764,15 +2764,18 @@ class Item_rollup_sum_switcher final : public Item_sum {
 };
 
 
-class Item_sum_route final : public Item_sum_sum {
-public:
+class Item_sum_route final : public Item_sum_num {
+ private:
   String m_tmp;
   typedef std::pair<int, int> Edge;
 
+public:
   std::vector<Edge> edges;
-  Item_sum_route(const POS &pos, Item *item_par, bool distinct, PT_window *w)
-      : Item_sum_sum(pos, item_par, distinct, w) {
-        set_data_type_geometry();
+  std::vector<double> weights;
+  Item_sum_route(const POS &pos, PT_item_list *item_list, PT_window *w)
+      : Item_sum_num(pos, item_list, w) {
+        //set_data_type_string(5, collation.collation);
+        set_data_type_string(100000, collation.collation);
         m_tmp = String("", 0, collation.collation);
 
       }
@@ -2789,6 +2792,10 @@ public:
   String *val_str(String *str) override;
   const char *func_name() const override { return "route"; }
   Item_result result_type() const override { return STRING_RESULT; }
+  void update_field() override;
+  void clear() override;
+
+
 };
 
 #endif /* ITEM_SUM_INCLUDED */

@@ -6182,8 +6182,15 @@ bool Item_rollup_sum_switcher::aggregator_setup(THD *thd) {
 
 bool Item_sum_route::add() {
   String value{"", 0, collation.collation};
-  DBUG_LOG("Routing", "Argument 0: " << args[0]->val_int() << ", argument 1: " << args[1]->val_int());
-  if (Item_sum_sum::add()) return true;
+  DBUG_LOG("Routing", "Argument " << 0 << ": " << args[0]->val_int() << ", argument 1: " << args[1]->val_int() << ", argument 2: " << args[2]->val_real());
+  if (args[0]->null_value || args[1]->null_value || args[2]->null_value) {
+    DBUG_LOG("Routing", "One of the arguments was null. Cannot route");
+    return true;
+  }
+  Edge e(args[0]->val_int(), args[1]->val_int());
+  edges.push_back(e);
+  weights.push_back(args[2]->val_real());
+  //if (Item_sum_num::add()) return true;
   return false;
 }
 
@@ -6201,10 +6208,33 @@ my_decimal *Item_sum_route::val_decimal(my_decimal *val) {
 
 String *Item_sum_route::val_str(String *str) {
   if (aggr) aggr->endup();
+  DBUG_LOG("Routing", "Num edges: " << edges.size());
+  Graph_router gr = Graph_router(edges, weights);
+  Graph_router::Vertex s = *gr.getSource(8);
+  gr.executeDijkstra(s);
+  gr.getDistances(str);
+  gr.getPredecessors(str);
 
   String value{"Hello", 5, collation.collation};
   return &value;
 
+}
 
-  //return val_string_from_real(str);
+void Item_sum_route::update_field() {
+  DBUG_TRACE;
+  DBUG_ASSERT(aggr->Aggrtype() != Aggregator::DISTINCT_AGGREGATOR);
+  DBUG_LOG("Routing", "update_field is called");
+  uchar *res = result_field->field_ptr();
+
+  double old_nr = float8get(res);
+  double nr = args[0]->val_real();
+  if (!args[0]->null_value) {
+    old_nr += nr;
+    result_field->set_notnull();
+  }
+  float8store(res, old_nr);
+}
+
+void Item_sum_route::clear() {
+  DBUG_LOG("Routing", "clear() is called. This does nothing yet");
 }
