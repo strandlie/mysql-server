@@ -6183,7 +6183,7 @@ bool Item_rollup_sum_switcher::aggregator_setup(THD *thd) {
 bool Item_sum_route::add() {
   String value{"", 0, collation.collation};
   DBUG_LOG("Routing", "Argument " << 0 << ": " << args[0]->val_int() << ", argument 1: " << args[1]->val_int() << ", argument 2: " << args[2]->val_real());
-  if (args[0]->null_value || args[1]->null_value || args[2]->null_value) {
+  if (args[0]->null_value || args[1]->null_value || args[2]->null_value || args[3]->null_value || args[4]->null_value) {
     DBUG_LOG("Routing", "One of the arguments was null. Cannot route");
     return true;
   }
@@ -6210,10 +6210,12 @@ String *Item_sum_route::val_str(String *str) {
   if (aggr) aggr->endup();
   DBUG_LOG("Routing", "Num edges: " << edges.size());
   Graph_router gr = Graph_router(edges, weights);
-  Graph_router::Vertex s = *gr.getSource(8);
-  gr.executeDijkstra(s);
-  gr.getDistances(str);
-  gr.getPredecessors(str);
+  Graph_router::Vertex s = gr.getSource(args[3]->val_int());
+  if (s != -1) {
+    gr.executeDijkstra(s);
+    gr.getDistances(str);
+    gr.getPredecessorsTo(args[4]->val_int(), str);
+  }
 
   String value{"Hello", 5, collation.collation};
   return &value;

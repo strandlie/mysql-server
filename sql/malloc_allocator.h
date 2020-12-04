@@ -143,4 +143,13 @@ bool operator!=(const Malloc_allocator<T> &a1, const Malloc_allocator<T> &a2) {
   return a1.psi_key() != a2.psi_key();
 }
 
+template <typename T>
+class Routing_allocator: public Malloc_allocator<T> {
+ public:
+  Routing_allocator(): Malloc_allocator<T>(key_memory_routing) {
+    DBUG_LOG("Routing", "Constructing a Routing Allocator");
+  }
+};
+
 #endif  // MALLOC_ALLOCATOR_INCLUDED
+

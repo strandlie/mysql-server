@@ -2767,7 +2767,7 @@ class Item_rollup_sum_switcher final : public Item_sum {
 class Item_sum_route final : public Item_sum_num {
  private:
   String m_tmp;
-  typedef std::pair<int, int> Edge;
+  typedef std::pair<long, long> Edge;
 
 public:
   std::vector<Edge> edges;

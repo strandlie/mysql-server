@@ -128,6 +128,7 @@ PSI_memory_key key_memory_quick_ror_intersect_select_root;
 PSI_memory_key key_memory_quick_ror_union_select_root;
 PSI_memory_key key_memory_rpl_filter;
 PSI_memory_key key_memory_rpl_slave_check_temp_dir;
+PSI_memory_key key_memory_routing;
 PSI_memory_key key_memory_servers;
 PSI_memory_key key_memory_shared_memory_name;
 PSI_memory_key key_memory_show_slave_status_io_gtid_set;
@@ -352,7 +353,8 @@ static PSI_memory_info all_server_memory[] = {
     {&key_memory_log_error_stack, "log_error_stack", PSI_FLAG_ONLY_GLOBAL_STAT,
      0, PSI_DOCUMENT_ME},
     {&key_memory_histograms, "histograms", 0, 0, PSI_DOCUMENT_ME},
-    {&key_memory_hash_join, "hash_join", 0, 0, PSI_DOCUMENT_ME}};
+    {&key_memory_hash_join, "hash_join", 0, 0, PSI_DOCUMENT_ME},
+    {&key_memory_routing, "routing", 0, 0, PSI_DOCUMENT_ME}};
 
 void register_server_memory_keys() {
   const char *category = "sql";

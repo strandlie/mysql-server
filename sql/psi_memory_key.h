@@ -95,6 +95,7 @@ extern PSI_memory_key key_memory_Recovered_xa_transactions;
 extern PSI_memory_key key_memory_Row_data_memory_memory;
 extern PSI_memory_key key_memory_Rpl_info_file_buffer;
 extern PSI_memory_key key_memory_Rpl_info_table;
+extern PSI_memory_key key_memory_routing;
 extern PSI_memory_key key_memory_SLAVE_INFO;
 extern PSI_memory_key key_memory_ST_SCHEMA_TABLE;
 extern PSI_memory_key key_memory_Slave_applier_json_diff_vector;

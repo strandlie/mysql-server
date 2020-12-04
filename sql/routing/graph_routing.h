@@ -15,18 +15,54 @@
 #include <boost/property_map/property_map.hpp>
 #include "my_dbug.h"
 #include "mysqld_error.h"
+#include "sql/malloc_allocator.h"
 #include "sql_string.h"
 
+
+
+
+/**
+ * CUSTOM ALLOCATOR
+ */
+namespace boost
+{
+  struct vecS_profiled {};
+  template < typename ValueType > struct container_gen< vecS_profiled, ValueType>
+  {
+    typedef std::vector<ValueType, Routing_allocator<ValueType>> type;
+  };
+
+  template <> struct parallel_edge_traits<vecS_profiled>
+  {
+    typedef allow_parallel_edge_tag type;
+  };
+
+  namespace detail {
+    template <> struct is_random_access< vecS_profiled >
+    {
+      enum
+      {
+        value = true
+      };
+      typedef mpl::true_ type;
+    };
+  }
+}
+
+
+/**
+ * ROUTING IMPLEMENTATION
+ */
 namespace b = boost;
 class Graph_router {
  private:
   /*
    * Typedefs
    */
-  typedef b::adjacency_list<b::listS, b::vecS, b::directedS, b::no_property, b::property<b::edge_weight_t, int> > Graph;
+  typedef b::adjacency_list<b::vecS_profiled, b::vecS_profiled, b::undirectedS, b::no_property, b::property<b::edge_weight_t, double> > Graph;
   typedef b::property_map<Graph, b::vertex_index_t>::type IndexMap;
-  typedef std::pair<int, int> Edge;
-  typedef b::property<b::edge_weight_t, int> EdgeWeightProperty;
+  typedef std::pair<long, long> Edge;
+  typedef b::property<b::edge_weight_t, double> EdgeWeightProperty;
 
   /*
    * Utility
@@ -50,28 +86,31 @@ class Graph_router {
 
  public:
   typedef b::graph_traits<Graph>::vertex_descriptor Vertex;
-  std::vector<double> distances;
-  std::vector<Vertex> predecessors;
+  std::vector<double, Routing_allocator<double>> distances;
+  std::vector<Vertex, Routing_allocator<Vertex>> predecessors;
   Vertex currentSource;
   Graph_router(std::vector<Edge> edges, std::vector<double> weights) : G() {
     if (edges.size() != weights.size()) {
       my_error(ER_WRONG_PARAMETERS_TO_PROCEDURE, MYF(0), "Graph_router");
+      return;
     }
     for (std::string::size_type i = 0; i < edges.size(); ++i) {
-      DBUG_LOG("Routing", "Adding edge from " << edges[i].first << " to " << edges[i].second);
       add_edge(edges[i].first, edges[i].second, EdgeWeightProperty (weights[i]), G);
     }
     edges.clear();
     weights.clear();
 
-    predecessors = std::vector<Vertex>(num_vertices(G), b::graph_traits<Graph>::null_vertex());
-    distances = std::vector<double>(num_vertices(G));
+
+    predecessors = std::vector<Vertex, Routing_allocator<Vertex>>(num_vertices(G), b::graph_traits<Graph>::null_vertex());
+    distances = std::vector<double, Routing_allocator<double>>(num_vertices(G));
   }
 
   void printVertices();
-  Vertex *getSource(int id);
+  Vertex getSource(int id);
   void executeDijkstra(Vertex source);
-  void getDistances(String *str);
-  void getPredecessors(String *str);
+  void getDistances(String* str);
+  void getDistancesTo(int id, String* str);
+  void getPredecessorsTo(int id, String* str);
 
 };
+

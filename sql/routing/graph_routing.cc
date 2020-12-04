@@ -5,102 +5,103 @@
 #include "graph_routing.h"
 
 class Vertex;
-void Graph_router::printVertices() {
 
-  // Vector for storing distance property
-  std::vector<int> d(num_vertices(G));
-
-  // Get the first vertex
-  Vertex s = *(vertices(G).first);
-  DBUG_LOG("Routing", "Source: " << name[s]);
-
-  // Invoke variant 2 of Dijkstra's algorithm
-  dijkstra_shortest_paths(G, s, b::distance_map(&d[0]));
-
-  // Get the property map for vertex indices
-  typedef b::property_map<Graph, b::vertex_index_t>::type IndexMap;
-  IndexMap index = get(b::vertex_index, G);
-
-  DBUG_LOG("Routing", "Distances from start vertex: " << name[index(s)]);
-  b::graph_traits<Graph>::vertex_iterator vi;
-  for(vi = vertices(G).first; vi != vertices(G).second; ++vi) {
-    DBUG_LOG("Routing", "distance(" << name[index(*vi)] << ") = " << d[*vi]);
-  }
-
-  using std::vector;
-
-  vector<Vertex> p(num_vertices(G), b::graph_traits<Graph>::null_vertex()); // The predecessor array
-  dijkstra_shortest_paths(G, s, b::distance_map(&d[0]).predecessor_map(&p[0]));
-
-  DBUG_LOG("Routing", "Parents in the tree of shortest paths: ");
-  for(vi = vertices(G).first; vi != vertices(G).second; ++vi) {
-    DBUG_LOG("Routing", "parent(" << name[*vi]);
-    if(p[*vi] == b::graph_traits<Graph>::null_vertex()) {
-      DBUG_LOG("Routing", ") = no parent");
-    } else {
-      DBUG_LOG("Routing", ") = " << name[p[*vi]]);
-    }
-  }
-}
-
-Graph_router::Vertex *Graph_router::getSource(int id) {
+Graph_router::Vertex Graph_router::getSource(int id) {
   using namespace boost;
   graph_traits<Graph>::vertex_iterator vi;
   vi = vertices(G).first;
   Graph_router::Vertex s;
   for( ; vi != vertices(G).second; ++vi) {
     s = *vi;
-    if (index(s) == (std::string::size_type) id) {
-      return &s;
+    if (s == (std::string::size_type) id) {
+      return s;
     }
   }
-  return nullptr;
+  DBUG_LOG("Routing", "Did not find the node");
+  return -1;
 }
 
+/**
+ * Supply the source and execute Dijkstra's single source - all destinations
+ * @param source The source to start from
+ */
 void Graph_router::executeDijkstra(Vertex source) {
   dijkstra_shortest_paths(G, source, b::distance_map(&distances[0]).predecessor_map(&predecessors[0]));
   currentSource = source; // Only add the new source after successful dijkstra
 }
 
+
 /**
- * Create a pretty-formatted string for predecessors
- * @param str The address to write the result string to
+ * Get the predecessors for a specific vertex
+ * @param id The id of the vertex we want to find the predecessors to
+ * @param str The string we (eventually) want to write the result to
  */
-void Graph_router::getPredecessors(String *str) {
+void Graph_router::getPredecessorsTo(int id, String *str) {
   if (predecessors.size() == 0) {
-    memcpy(str, nullptr, 1);
+    memcpy(str, nullptr, 0);
     return;
   }
 
   using namespace boost;
 
-  // TODO: Write to the string, not just debug-print
-  graph_traits<Graph>::vertex_iterator vi;
-  DBUG_LOG("Routing", "Parents in the tree of shortest paths: ");
-  for(vi = vertices(G).first; vi != vertices(G).second; ++vi) {
-    DBUG_LOG("Routing", "parent(" << *vi);
-    if(predecessors[*vi] == b::graph_traits<Graph>::null_vertex()) {
-      DBUG_LOG("Routing", ") = no parent");
-    } else {
-      DBUG_LOG("Routing", ") = " << predecessors[*vi]);
+  typedef graph_traits<Graph>::vertex_iterator vertex_iter;
+  std::pair<vertex_iter, vertex_iter> vp;
+  vp = vertices(G);
+  for ( ; vp.first != vp.second; ++vp.first) {
+    Vertex v = *vp.first;
+    if (v == id) {
+      Vertex parent = v;
+      Vertex current;
+      do {
+        current = parent;
+        parent = predecessors[current];
+        if(parent == graph_traits<Graph>::null_vertex()) {
+          DBUG_LOG("Routing", "parent(" << current << ") = no parent");
+        } else {
+          DBUG_LOG("Routing", "parent(" << current << ") = " << parent);
+        };
+      } while(parent != current && parent != graph_traits<Graph>::null_vertex());
     }
   }
+
 }
 
 /**
- * Create a pretty-formatted string for distances
- * @param str The address to write the result string to
+ * Create a pretty-formatted string for all distances in the graph to the source
+ * @param str The address to (eventually) write the result string to
  */
 void Graph_router::getDistances(String *str) {
   if (distances.size() == 0) {
-    memcpy(str, nullptr, 1);
+    memcpy(str, nullptr, 0);
     return;
   }
 
   // TODO: Write to the string, not just debug-print
-  DBUG_LOG("Routing", "Distances from start vertex: " << index(currentSource));
+  DBUG_LOG("Routing", "Distances from start vertex: " << currentSource);
   b::graph_traits<Graph>::vertex_iterator vi;
   for(vi = vertices(G).first; vi != vertices(G).second; ++vi) {
     DBUG_LOG("Routing", "distance(" << index(*vi) << ") = " << distances[*vi]);
+  }
+}
+
+/**
+ * Only find the distance to a specific vertex
+ * @param id The id of the vertex we want the distance to
+ * @param str A result string to (eventually) write the result to
+ */
+void Graph_router::getDistancesTo(int id, String* str) {
+  if (distances.size() == 0) {
+    memcpy(str, nullptr, 0);
+    return;
+  }
+
+  using namespace boost;
+
+  typedef graph_traits<Graph>::vertex_iterator vertex_iter;
+  std::pair<vertex_iter, vertex_iter> vp = vertices(G);
+  for ( ; vp.first != vp.second; ++vp.first) {
+    if (*vp.first == id) {
+      DBUG_LOG("Routing", "distance(" << *vp.first << ") = " << distances[*vp.first]);
+    }
   }
 }
