@@ -69,19 +69,6 @@ class Graph_router {
    */
   IndexMap index = get(b::vertex_index, G);
 
-  /*
-   * Training materials
-   */
-  enum { A, B, C, D, E, N };
-
-
-  const char* name = "ABCDE";
-  const Edge edges[9] = { Edge(A, C),
-                          Edge(B, B), Edge(B, D), Edge(B, E),
-                          Edge(C, B), Edge(C, D),
-                          Edge(D, E),
-                          Edge(E, A), Edge(E, B) };
-
   Graph G;
 
  public:
@@ -105,7 +92,6 @@ class Graph_router {
     distances = std::vector<double, Routing_allocator<double>>(num_vertices(G));
   }
 
-  void printVertices();
   Vertex getSource(int id);
   void executeDijkstra(Vertex source);
   void getDistances(String* str);
