@@ -92,7 +92,7 @@ class Graph_router {
     distances = std::vector<double, Routing_allocator<double>>(num_vertices(G));
   }
 
-  Vertex getSource(int id);
+  Vertex *getSource(unsigned long id);
   void executeDijkstra(Vertex source);
   void getDistances(String* str);
   void getDistancesTo(int id, String* str);

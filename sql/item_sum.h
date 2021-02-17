@@ -2781,23 +2781,24 @@ class Item_rollup_sum_switcher final : public Item_sum {
 };
 
 
-class Item_sum_route final : public Item_sum_num {
+class Item_sum_route final : public Item_sum {
  private:
-  String m_tmp;
   typedef std::pair<long, long> Edge;
+  ulonglong m_ram_limit;
+  TABLE *table;
 
 public:
   std::vector<Edge> edges;
   std::vector<double> weights;
   Item_sum_route(const POS &pos, PT_item_list *item_list, PT_window *w)
-      : Item_sum_num(pos, item_list, w) {
-        //set_data_type_string(5, collation.collation);
-        set_data_type_string(100000, collation.collation);
-        m_tmp = String("", 0, collation.collation);
-
+      : Item_sum(pos, item_list, w) {
+        set_data_type_string(100000, &my_charset_utf8mb4_general_ci);
+        m_ram_limit = 0;
       }
 
-
+  enum_field_types default_data_type() const override {
+    return MYSQL_TYPE_STRING;
+  }
   enum Sumfunctype sum_func() const override {
     return ROUTE_FUNC;
   }
@@ -2811,6 +2812,14 @@ public:
   Item_result result_type() const override { return STRING_RESULT; }
   void update_field() override;
   void clear() override;
+  bool get_date(MYSQL_TIME *ltime, my_time_flags_t fuzzydate) override {
+    return get_date_from_string(ltime, fuzzydate);
+  }
+  bool get_time(MYSQL_TIME *ltime) override {
+    return get_time_from_numeric(ltime); /* Decimal or real */
+  }
+  bool fix_fields(THD *thd, Item **ref) override;
+  void reset_field() override { DBUG_ASSERT(false); }
 
 
 };

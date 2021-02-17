@@ -29,6 +29,7 @@
 
 #include "sql/item_sum.h"
 
+#include <storage/temptable/include/temptable/table.h>
 #include <algorithm>
 #include <bitset>
 #include <cstring>
@@ -63,6 +64,7 @@
 #include "sql/parse_tree_node_base.h"  // Parse_context
 #include "sql/parse_tree_nodes.h"      // PT_order_list
 #include "sql/parser_yystype.h"
+#include "sql/routing/graph_routing.h"
 #include "sql/sql_array.h"
 #include "sql/sql_class.h"  // THD
 #include "sql/sql_const.h"
@@ -79,7 +81,6 @@
 #include "sql/temp_table_param.h"  // Temp_table_param
 #include "sql/uniques.h"           // Unique
 #include "sql/window.h"
-#include "sql/routing/graph_routing.h"
 
 using std::max;
 using std::min;
@@ -6222,6 +6223,7 @@ bool Item_sum_route::add() {
 
 double Item_sum_route::val_real() {
   DBUG_ASSERT(fixed == 1);
+  DBUG_LOG("Routing", aggr);
   aggr->endup();
   return 12;
 }
@@ -6235,14 +6237,77 @@ String *Item_sum_route::val_str(String *str) {
   if (aggr) aggr->endup();
   DBUG_LOG("Routing", "Num edges: " << edges.size());
   Graph_router gr = Graph_router(edges, weights);
-  Graph_router::Vertex s = gr.getSource(args[3]->val_int());
-  if (s != -1) {
-    gr.executeDijkstra(s);
+  Graph_router::Vertex *s = gr.getSource(args[3]->val_int());
+  if (s != nullptr) {
+    gr.executeDijkstra(*s);
     gr.getDistances(str);
     gr.getPredecessorsTo(args[4]->val_int(), str);
   }
 
-  String value{"Hello", 5, collation.collation};
+
+
+  // Initial setup
+  THD *thd = current_thd;
+  Temp_table_param *ttp = new Temp_table_param(thd->mem_root);
+  ttp->field_count = 2;
+  mem_root_deque<Item*>* mrd = new mem_root_deque<Item*>(thd->mem_root);
+
+  // Initial fields
+  Item *string1 = new Item_string("String1", 7, &my_charset_utf8mb4_general_ci);
+  Item *int1 = new Item_int(43);
+  mrd->push_back(string1);
+  mrd->push_back(int1);
+
+
+  table = create_tmp_table(thd, ttp, *mrd,
+                                 nullptr, true,
+                                 false, thd->variables.option_bits | TMP_TABLE_ALL_COLUMNS,
+                                 HA_POS_ERROR, "");
+
+  if (!table->is_created()) {
+    if (instantiate_tmp_table(thd, table)) {
+      return nullptr;
+    }
+    empty_record(table);
+  } else {
+    if (table->file->inited) {
+      table->file->ha_index_or_rnd_end();
+    }
+    table->file->ha_delete_all_rows();
+  }
+
+  Item *int2 = new Item_int(200);
+  Field *from_field2, *default_field2;
+  Field *intField2 = ::create_tmp_field(thd, table, int2, int2->type(),
+                                       nullptr, &from_field2, &default_field2,
+                                       false, false, false, false, false);
+
+  for (int i = 1; i < 6; i++) {
+    Item *int1 = new Item_int(10);
+    Field *intField2 = ::create_tmp_field(thd, table, int1, int2->type(),
+                                          nullptr, &from_field2, &default_field2,
+                                          false, false, false, false, false);
+    intField2->set_field_ptr(table->record[0]);
+    intField2->store(i, true);
+    table->file->ha_write_row(table->record[0]);
+  }
+
+  int error = 0;
+  table->file->ha_rnd_init(true);
+  while(error != static_cast<int>(temptable::Result::END_OF_FILE)) {
+    error = table->file->ha_rnd_next(table->record[0]);
+    longlong read_result = intField2->val_int(table->record[0]);
+    int i1 = 2;
+  }
+  table->file->ha_rnd_end();
+
+
+  char result[6] = "Hello";
+  //strcat(result, *(table->field[5]->val_str(str)));
+  //String tmpValue{result, 5, collation.collation};
+  String value = *(new String[5]);
+  value.append(result);
+  value.set_charset(&my_charset_utf8mb4_general_ci);
   return &value;
 
 }
@@ -6264,4 +6329,36 @@ void Item_sum_route::update_field() {
 
 void Item_sum_route::clear() {
   DBUG_LOG("Routing", "clear() is called. This does nothing yet");
+}
+
+/*
+ * Fix fields, and also store what the RAM-limitation is
+ * on this platform
+ */
+bool Item_sum_route::fix_fields(THD *thd, Item **ref) {
+  if (Item_sum::fix_fields(thd, ref)) return true;
+
+  m_ram_limit = ram_limitation(thd);
+
+  if (init_sum_func_check(thd)) return true;
+
+  Condition_context CCT(thd->lex->current_select());
+
+  maybe_null = false;
+
+  for (uint i = 0; i < arg_count; i++) {
+    if ((!args[i]->fixed && args[i]->fix_fields(thd, args + i)) ||
+        args[i]->check_cols(1))
+      return true;
+    maybe_null |= args[i]->maybe_null;
+  }
+
+  // Set this value before calling resolve_type()
+  null_value = true;
+
+  if (resolve_type(thd)) return true;
+
+  if (check_sum_func(thd, ref)) return true;
+  fixed = true;
+  return false;
 }

@@ -31,6 +31,7 @@
 #include "my_sys.h"
 #include "mysql/service_mysql_alloc.h"
 #include "sql/psi_memory_key.h"
+//#include "sql/current_thd.h"
 
 /**
   Malloc_allocator is a C++ STL memory allocator based on my_malloc/my_free.
@@ -83,13 +84,15 @@ class Malloc_allocator {
   Malloc_allocator(const Malloc_allocator<U> &other MY_ATTRIBUTE((unused)))
       : m_key(other.psi_key()) {}
 
+  virtual ~Malloc_allocator() = default;
+
   template <class U>
   Malloc_allocator &operator=(
       const Malloc_allocator<U> &other MY_ATTRIBUTE((unused))) {
     DBUG_ASSERT(m_key == other.psi_key());  // Don't swap key.
   }
 
-  pointer allocate(size_type n,
+  virtual pointer allocate(size_type n,
                    const_pointer hint MY_ATTRIBUTE((unused)) = nullptr) {
     if (n == 0) return nullptr;
     if (n > max_size()) throw std::bad_alloc();
@@ -100,7 +103,7 @@ class Malloc_allocator {
     return p;
   }
 
-  void deallocate(pointer p, size_type) { my_free(p); }
+  virtual void deallocate(pointer p, size_type) { my_free(p); }
 
   template <class U, class... Args>
   void construct(U *p, Args &&... args) {
@@ -146,8 +149,28 @@ bool operator!=(const Malloc_allocator<T> &a1, const Malloc_allocator<T> &a2) {
 template <typename T>
 class Routing_allocator: public Malloc_allocator<T> {
  public:
-  Routing_allocator(): Malloc_allocator<T>(key_memory_routing) {
-    DBUG_LOG("Routing", "Constructing a Routing Allocator");
+  typedef size_t size_type;
+  typedef const T *const_pointer;
+  typedef T *pointer;
+  size_type m_curr_allocated;
+
+  Routing_allocator(): Malloc_allocator<T>(key_memory_routing) {m_curr_allocated = 0;}
+  pointer allocate(size_type n,
+                   const_pointer hint MY_ATTRIBUTE((unused)) = nullptr) override {
+    m_curr_allocated += n;
+    return Malloc_allocator<T>::allocate(n, hint);
+  }
+
+  void deallocate(pointer p, size_type t) override {
+    if (p != nullptr) {
+      size_type p_size = sizeof(*p);
+      if (m_curr_allocated - p_size < 0) {
+        m_curr_allocated = 0;
+      } else {
+        m_curr_allocated -= p_size;
+      }
+    }
+    Malloc_allocator<T>::deallocate(p, t);
   }
 };
 

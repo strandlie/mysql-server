@@ -6,19 +6,18 @@
 
 class Vertex;
 
-Graph_router::Vertex Graph_router::getSource(int id) {
+Graph_router::Vertex *Graph_router::getSource(unsigned long id) {
   using namespace boost;
   graph_traits<Graph>::vertex_iterator vi;
-  vi = vertices(G).first;
   Graph_router::Vertex s;
-  for( ; vi != vertices(G).second; ++vi) {
-    s = *vi;
+  for(vi = vertices(G).first; vi != vertices(G).second; ++vi) {
+    memcpy(&s, &vi, sizeof(s));
     if (s == (std::string::size_type) id) {
-      return s;
+      return &s;
     }
   }
   DBUG_LOG("Routing", "Did not find the node");
-  return -1;
+  return nullptr;
 }
 
 /**
