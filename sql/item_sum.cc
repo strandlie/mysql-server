@@ -6233,6 +6233,7 @@ my_decimal *Item_sum_route::val_decimal(my_decimal *val) {
 
 String *Item_sum_route::val_str(String *str) {
   if (aggr) aggr->endup();
+
   DBUG_LOG("Routing", "Num edges: " << edges.size());
   Graph_router gr = Graph_router(edges, weights);
   Graph_router::Vertex s = gr.getSource(args[3]->val_int());
@@ -6241,9 +6242,9 @@ String *Item_sum_route::val_str(String *str) {
     gr.getDistances(str);
     gr.getPredecessorsTo(args[4]->val_int(), str);
   }
-
-  String value{"Hello", 5, &my_charset_utf8mb4_general_ci};
-  return &value;
+  //String value{"Hello", 5, &my_charset_utf8mb4_general_ci};
+  String *value = new(current_thd->mem_root) String("Hello", 5, &my_charset_utf8mb4_general_ci);
+  return value;
 
 }
 

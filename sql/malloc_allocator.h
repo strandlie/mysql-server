@@ -146,9 +146,7 @@ bool operator!=(const Malloc_allocator<T> &a1, const Malloc_allocator<T> &a2) {
 template <typename T>
 class Routing_allocator: public Malloc_allocator<T> {
  public:
-  Routing_allocator(): Malloc_allocator<T>(key_memory_routing) {
-    DBUG_LOG("Routing", "Constructing a Routing Allocator");
-  }
+  Routing_allocator(): Malloc_allocator<T>(key_memory_routing) {}
 };
 
 #endif  // MALLOC_ALLOCATOR_INCLUDED
