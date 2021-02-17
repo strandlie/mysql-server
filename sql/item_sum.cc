@@ -6242,7 +6242,7 @@ String *Item_sum_route::val_str(String *str) {
     gr.getPredecessorsTo(args[4]->val_int(), str);
   }
 
-  String value{"Hello", 5, collation.collation};
+  String value{"Hello", 5, &my_charset_utf8mb4_general_ci};
   return &value;
 
 }

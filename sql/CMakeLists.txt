@@ -567,6 +567,7 @@ SET(SQL_SHARED_SOURCES
   uniques.cc
   xa.cc
   routing/graph_routing.cc
+        routing/routing_container.cc
   join_optimizer/hypergraph.cc
 )
 

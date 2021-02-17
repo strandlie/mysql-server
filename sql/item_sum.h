@@ -2792,8 +2792,8 @@ public:
   Item_sum_route(const POS &pos, PT_item_list *item_list, PT_window *w)
       : Item_sum_num(pos, item_list, w) {
         //set_data_type_string(5, collation.collation);
-        set_data_type_string(100000, collation.collation);
-        m_tmp = String("", 0, collation.collation);
+        set_data_type_string(100000, &my_charset_utf8mb4_general_ci);
+        m_tmp = String("", 0, &my_charset_utf8mb4_general_ci);
 
       }
 
