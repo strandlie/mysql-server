@@ -17,6 +17,7 @@
 #include "mysqld_error.h"
 #include "sql/malloc_allocator.h"
 #include "sql_string.h"
+#include "routing_container.h"
 
 
 
@@ -24,29 +25,25 @@
 /**
  * CUSTOM ALLOCATOR
  */
-namespace boost
-{
-  struct vecS_profiled {};
-  template < typename ValueType > struct container_gen< vecS_profiled, ValueType>
-  {
-    typedef std::vector<ValueType, Routing_allocator<ValueType>> type;
-  };
+namespace boost {
+struct vecS_profiled {};
+template <typename ValueType>
+struct container_gen<vecS_profiled, ValueType> {
+  typedef routing::RVector<ValueType, Routing_allocator<ValueType>> type;
+};
 
-  template <> struct parallel_edge_traits<vecS_profiled>
-  {
-    typedef allow_parallel_edge_tag type;
-  };
+template <>
+struct parallel_edge_traits<vecS_profiled> {
+  typedef allow_parallel_edge_tag type;
+};
 
-  namespace detail {
-    template <> struct is_random_access< vecS_profiled >
-    {
-      enum
-      {
-        value = true
-      };
-      typedef mpl::true_ type;
-    };
-  }
+namespace detail {
+template <>
+struct is_random_access<vecS_profiled> {
+  enum { value = true };
+  typedef mpl::true_ type;
+};
+}
 }
 
 
@@ -59,7 +56,9 @@ class Graph_router {
   /*
    * Typedefs
    */
-  typedef b::adjacency_list<b::vecS_profiled, b::vecS_profiled, b::undirectedS, b::no_property, b::property<b::edge_weight_t, double> > Graph;
+  typedef b::adjacency_list<b::vecS_profiled, b::vecS_profiled, b::undirectedS,
+                            b::no_property, b::property<b::edge_weight_t, double>>
+      Graph;
   typedef b::property_map<Graph, b::vertex_index_t>::type IndexMap;
   typedef std::pair<long, long> Edge;
   typedef b::property<b::edge_weight_t, double> EdgeWeightProperty;
@@ -82,21 +81,20 @@ class Graph_router {
       return;
     }
     for (std::string::size_type i = 0; i < edges.size(); ++i) {
-      add_edge(edges[i].first, edges[i].second, EdgeWeightProperty (weights[i]), G);
+      add_edge(edges[i].first, edges[i].second, EdgeWeightProperty(weights[i]),
+               G);
     }
     edges.clear();
     weights.clear();
 
-
-    predecessors = std::vector<Vertex, Routing_allocator<Vertex>>(num_vertices(G), b::graph_traits<Graph>::null_vertex());
+    predecessors = std::vector<Vertex, Routing_allocator<Vertex>>(
+        num_vertices(G), b::graph_traits<Graph>::null_vertex());
     distances = std::vector<double, Routing_allocator<double>>(num_vertices(G));
   }
 
   Vertex getSource(int id);
   void executeDijkstra(Vertex source);
-  void getDistances(String* str);
-  void getDistancesTo(int id, String* str);
-  void getPredecessorsTo(int id, String* str);
-
+  void getDistances(String *str);
+  void getDistancesTo(int id, String *str);
+  void getPredecessorsTo(int id, String *str);
 };
-

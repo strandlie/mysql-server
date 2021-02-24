@@ -707,7 +707,7 @@ SET(SQL_SOURCE
   srv_session.cc
   srv_session_info_service.cc
   srv_session_service.cc
-  )
+        routing/routing_iterator.cpp routing/routing_iterator.h)
 
 IF(NOT WIN32)
   LIST(APPEND SQL_SOURCE mysqld_daemon.cc)

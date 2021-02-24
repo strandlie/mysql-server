@@ -1,74 +1,90 @@
 #include <iostream>
 #include <vector>
-
-#include <iostream>
-#include <vector>
 #include <fstream>
+#include "routing_iterator.h"
 
 typedef unsigned long long int ulonglong;
-char *const onDiskLocation = "/var/tmp/mysql_routing_spillfile";
 
-template<typename T>
-struct rout_It
-{
-  std::vector<T>& vec_;
-  int pointer_;
-  bool onDisk;
-  std::ifstream inFile;
-
-  rout_It(std::vector<T>& vec, bool onDisk) :
-      vec_(vec), pointer_{0}, onDisk(onDisk) {
-    if (onDisk) {
-      inFile.open(onDiskLocation, std::ios::in);
-    }
-  }
-
-  rout_It(std::vector<T>& vec, bool onDisk, int size) :
-      vec_(vec), pointer_{size}, onDisk(onDisk) {
-    if (onDisk) {
-      inFile.open(onDiskLocation, std::ios::in);
-    }
-  }
-
-  rout_It(const rout_It<T> &ite):
-      vec_(ite.vec_), pointer_(ite.pointer_), onDisk(ite.onDisk) {
-    if (onDisk) {
-      inFile.open(onDiskLocation, std::ios::in);
-    }
-  }
-
-  ~rout_It() {
-    if (inFile.is_open()) {
-      inFile.close();
-    }
-  }
+namespace routing {
 
 
+template <typename T, typename AllocT>
+struct RVector {
+ private:
 
-  bool operator!=(const rout_It<T>& other) const;
-  bool operator==(const rout_It<T>& other) const;
-  rout_It& operator++();
-  T& operator*();
-};
-
-template<typename T>
-struct RVector
-{
-  std::vector<T> vec_;
+  char *const onDiskLocation = "/var/tmp/mysql_routing_spillfile";
+  std::vector<T, AllocT> vec_;
   ulonglong ram_limit_;
-  std::ofstream outFile;
+  std::fstream file;
   bool onDisk;
   ulonglong onDiskSize;
 
+ public:
+  /*
+   * STL CONTAINER REQUIRED
+   */
 
+  // Typedefs
+  typedef size_t size_type;
+  typedef typename AllocT::difference_type difference_type;
+  typedef T& reference;
+  typedef T* pointer;
+  typedef typename AllocT::const_reference const_reference;
+  typedef T value_type;
+  typedef routing_iterator<T> iterator;
+  typedef const_routing_iterator<T> const_iterator;
+  // typedef T7 reverse_iterator;
+  // typedef T8 const_reverse_iterator;
+
+  // Method definitions
+  routing_iterator<T> begin();
+  const_routing_iterator<T> begin() const;
+  routing_iterator<T> end();
+  const_routing_iterator<T> end() const;
+  // reverse_iterator rbegin();
+  // const_reverse_iterator rbegin() const;
+  // reverse_iterator rend();
+  // const_reverse_iterator rend() const;
+  size_type size() const;
+  size_type max_size() const;
+  bool empty() const;
+  routing_iterator<T> erase(routing_iterator<T> where);
+  routing_iterator<T> erase(routing_iterator<T> first,
+                            routing_iterator<T> last);
+  void clear() { erase(begin(), end()); };
+  void swap(RVector &right);
+
+  /*
+   * STL CONTAINER REQUIRED *** END
+   */
+
+  /*
+   * VECTOR REQUIRED
+   */
+
+  void push_back(T item);
+  void resize(size_type n, T val);
+  void resize(size_type n);
+  T &operator[](size_t n);
+
+  /*
+   * VECTOR REQUIRED *** END
+   */
+
+  // Copy constructor
+  RVector(RVector<T, AllocT> &r_vector)
+      : ram_limit_(r_vector.ram_limit_),
+        onDisk(r_vector.onDisk),
+        vec_(r_vector.vec_),
+        onDiskSize(r_vector.onDiskSize) {
+    file.open(onDiskLocation);
+  };
   RVector(ulonglong ram_limit) : ram_limit_(ram_limit), onDisk(false) {}
   ~RVector() {
-    if(outFile && outFile.is_open()) {
-      outFile.close();
+    if (file && file.is_open()) {
+      file.close();
     }
     remove(onDiskLocation);
   }
-  void push_back(T item);
-  rout_It<T> begin();
-  rout_It<T> end();
+};
 };
