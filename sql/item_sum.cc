@@ -6233,7 +6233,6 @@ my_decimal *Item_sum_route::val_decimal(my_decimal *val) {
 
 String *Item_sum_route::val_str(String *str) {
   if (aggr) aggr->endup();
-
   DBUG_LOG("Routing", "Num edges: " << edges.size());
   Graph_router gr = Graph_router(edges, weights);
   Graph_router::Vertex s = gr.getSource(args[3]->val_int());

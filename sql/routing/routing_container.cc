@@ -168,6 +168,33 @@ typename RVector<T, AllocT>::reference RVector<T, AllocT>::operator[](size_t n) 
 }
 
 template <typename T, typename AllocT>
+typename RVector<T, AllocT>::reference RVector<T, AllocT>::operator[](size_t n) const {
+  if (!onDisk) {
+    DBUG_LOG("Routing", "Return from internal vector: ");
+    return vec_[n];
+  }
+
+  /*
+   * Make sure iteration starts from the beginning of
+   * file each time
+   */
+  std::ifstream loc_file;
+  if (loc_file && loc_file.is_open()) {
+    loc_file.close();
+  }
+  loc_file.open(onDiskLocation, std::ios::in);
+  if (loc_file && loc_file.is_open()) {
+    T *t = new T;
+    loc_file >> t;
+    for (int i = 0; i < n; i++) {
+      loc_file >> t;
+    }
+    DBUG_LOG("Routing", "Return from disk: ");
+    return t;
+  }
+}
+
+template <typename T, typename AllocT>
 void RVector<T, AllocT>::push_back(T item) {
   typedef typename std::vector<T>::iterator Iter;
   const std::size_t current_size = vec_.size() * sizeof(T);
@@ -181,9 +208,9 @@ void RVector<T, AllocT>::push_back(T item) {
       file.open(onDiskLocation, std::ios::out | std::ios::app);
     }
     for (Iter it = vec_.begin(); it != vec_.end(); ++it) {
-      file << *it << std::endl;
+      file << *it << std::endl; // Does this work with reading?
     }
-    file << item << std::endl;
+    file << item << std::endl;  // Does this work with reading?
     file.close();
     onDisk = true;
     onDiskSize = vec_.size() + 1;  // +1 since the first element too large triggers the conversion

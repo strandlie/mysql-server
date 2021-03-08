@@ -1,18 +1,23 @@
 #include <iostream>
 #include <vector>
 #include <fstream>
+#include <algorithm>
 #include "routing_iterator.h"
+#include "sql/current_thd.h"
+#include "sql/sql_class.h"
+#include "boost/pending/container_traits.hpp"
+
 
 typedef unsigned long long int ulonglong;
 
-namespace routing {
 
+namespace routing {
 
 template <typename T, typename AllocT>
 struct RVector {
  private:
 
-  char *const onDiskLocation = "/var/tmp/mysql_routing_spillfile";
+  char const *onDiskLocation = "/var/tmp/mysql_routing_spillfile";
   std::vector<T, AllocT> vec_;
   ulonglong ram_limit_;
   std::fstream file;
@@ -36,7 +41,42 @@ struct RVector {
   // typedef T7 reverse_iterator;
   // typedef T8 const_reverse_iterator;
 
-  // Method definitions
+  /*
+   * CONSTRUCTORS
+   */
+  // Copy constructor
+  RVector(RVector<T, AllocT> &r_vector)
+      : ram_limit_(r_vector.ram_limit_),
+        onDisk(r_vector.onDisk),
+        vec_(r_vector.vec_),
+        onDiskSize(r_vector.onDiskSize) {
+    file.open(onDiskLocation);
+  }
+  RVector(ulonglong ram_limit) : ram_limit_(ram_limit), onDisk(false) {}
+  RVector() {
+    if (current_thd) {
+      ulonglong ram_limitation =
+          fmin(current_thd->variables.tmp_table_size, current_thd->variables.max_heap_table_size);
+      ram_limit_ = ram_limitation;
+    } else {
+      // Fallback
+      ram_limit_ = 32000; // 32kB
+    }
+    DBUG_LOG("Routing", "Ram-limit set to: " << ram_limit_);
+  }
+  ~RVector() {
+    if (file && file.is_open()) {
+      file.close();
+    }
+    remove(onDiskLocation);
+  }
+  /*
+   *** END *** CONSTRUCTORS
+   */
+
+  /*
+   * METHOD DEFINITIONS
+   */
   routing_iterator<T> begin();
   const_routing_iterator<T> begin() const;
   routing_iterator<T> end();
@@ -51,11 +91,11 @@ struct RVector {
   routing_iterator<T> erase(routing_iterator<T> where);
   routing_iterator<T> erase(routing_iterator<T> first,
                             routing_iterator<T> last);
-  void clear() { erase(begin(), end()); };
+  void clear() { erase(begin(), end()); }
   void swap(RVector &right);
 
   /*
-   * STL CONTAINER REQUIRED *** END
+   *** END *** STL CONTAINER REQUIRED
    */
 
   /*
@@ -66,25 +106,19 @@ struct RVector {
   void resize(size_type n, T val);
   void resize(size_type n);
   T &operator[](size_t n);
+  T &operator[](size_t n) const;
 
   /*
-   * VECTOR REQUIRED *** END
+   *** END *** VECTOR REQUIRED
    */
 
-  // Copy constructor
-  RVector(RVector<T, AllocT> &r_vector)
-      : ram_limit_(r_vector.ram_limit_),
-        onDisk(r_vector.onDisk),
-        vec_(r_vector.vec_),
-        onDiskSize(r_vector.onDiskSize) {
-    file.open(onDiskLocation);
-  };
-  RVector(ulonglong ram_limit) : ram_limit_(ram_limit), onDisk(false) {}
-  ~RVector() {
-    if (file && file.is_open()) {
-      file.close();
-    }
-    remove(onDiskLocation);
-  }
+
+  /*
+   *** END *** METHOD DEFINITIONS
+   */
+
 };
-};
+
+template<typename T, typename AllocT>
+boost::graph_detail::vector_tag container_category(const RVector<T, AllocT>&) { return boost::graph_detail::vector_tag(); }
+}

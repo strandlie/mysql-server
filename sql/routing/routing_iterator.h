@@ -25,8 +25,8 @@ class routing_iterator {
 
  private:
 
-  char *const onDiskLocation = "/var/tmp/mysql_routing_spillfile";
-  std::vector<T> &vec_;
+  char const *onDiskLocation = "/var/tmp/mysql_routing_spillfile";
+  std::vector<T> vec_;
   bool onDisk;
   std::ifstream inFile;
   int pointer_;
@@ -65,9 +65,10 @@ class routing_iterator {
   /*
    * Internally implemented methods
    */
-  self_type operator++() { self_type i = *this; pointer_++; return i; }
-  self_type operator++(int junk) { pointer_++; return *this; }
-  pointer operator->() { return &vec_.at(pointer_); }
+  self_type operator++() { self_type i = *this; pointer_++; return i; } // Pre-increment
+  self_type operator++(int junk) { pointer_++; return *this; }          // Post-increment
+  self_type operator--() { self_type i = *this; pointer_--; return i; } // Pre-decrement
+  self_type operator--(int junk) { pointer_--; return *this; }         // Post-decrement
   bool operator==(const self_type &right) const { return pointer_ == right.pointer_; }
   bool operator!=(const self_type &right) const { return !(this == right); }
 
@@ -75,6 +76,8 @@ class routing_iterator {
    * Externally implemented methods
    */
   reference operator*();
+  pointer operator->();
+  routing_iterator &operator=(const routing_iterator &other);
 
 };
 
@@ -93,7 +96,7 @@ class const_routing_iterator {
 
  private:
 
-  char *const onDiskLocation = "/var/tmp/mysql_routing_spillfile";
+  char const *onDiskLocation = "/var/tmp/mysql_routing_spillfile";
   std::vector<T>& vec_;
   int pointer_;
   bool onDisk;
@@ -130,19 +133,22 @@ class const_routing_iterator {
   /*
    * Internally implemented methods
    */
-  self_type operator++() { self_type i = *this; pointer_++; return i; }
-  self_type operator++(int junk) { pointer_++; return *this; }
-  const pointer operator->() { return &vec_.at(pointer_); }
+  self_type operator++() { self_type i = *this; pointer_++; return i; } // Pre-increment
+  self_type operator++(int junk) { pointer_++; return *this; }          // Post-increment
+  self_type operator--() { self_type i = *this; pointer_--; return i; } // Pre-decrement
+  self_type operator--(int junk) { pointer_--; return *this; }         // Post-decrement
   bool operator==(const self_type& right) { return pointer_ == right.pointer_; }
   bool operator !=(const self_type& right) { return !(this == right);}
 
   /*
    * Externally implemented methods
    */
-  reference operator*();
+  reference operator*() const;
+  pointer operator->() const;
+  self_type &operator=(const self_type &other);
 };
 
 
-};
+}
 
 #endif  // MYSQL_ROUTING_ITERATOR_H
