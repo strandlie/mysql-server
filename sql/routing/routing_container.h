@@ -1,12 +1,11 @@
+#include <algorithm>
+#include <fstream>
 #include <iostream>
 #include <vector>
-#include <fstream>
-#include <algorithm>
-#include "routing_iterator.h"
+#include "boost/pending/container_traits.hpp"
+#include "routing_iterator.cpp"
 #include "sql/current_thd.h"
 #include "sql/sql_class.h"
-#include "boost/pending/container_traits.hpp"
-
 
 typedef unsigned long long int ulonglong;
 
@@ -88,9 +87,12 @@ struct RVector {
   size_type size() const;
   size_type max_size() const;
   bool empty() const;
-  routing_iterator<T> erase(routing_iterator<T> where);
-  routing_iterator<T> erase(routing_iterator<T> first,
-                            routing_iterator<T> last);
+  routing_iterator<T> erase(iterator where);
+  routing_iterator<T> erase(iterator first,
+                            iterator last);
+  routing_iterator<T> erase(iterator first,
+                            iterator last,
+                            const T& value);
   void clear() { erase(begin(), end()); }
   void swap(RVector &right);
 
@@ -102,6 +104,8 @@ struct RVector {
    * VECTOR REQUIRED
    */
 
+  std::pair<typename RVector<T, AllocT>::iterator, bool> push(RVector<T, AllocT>& container, const T& value);
+  void erase(RVector<T, AllocT>& container, const T& value);
   void push_back(T item);
   void resize(size_type n, T val);
   void resize(size_type n);

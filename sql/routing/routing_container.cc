@@ -117,15 +117,29 @@ typename RVector<T, AllocT>::iterator RVector<T, AllocT>::erase(routing_iterator
   return routing_iterator<T>(this);
 }
 
+template<typename T, typename AllocT>
+typename RVector<T, AllocT>::iterator RVector<T, AllocT>::erase(iterator first, iterator last, const T &value) {
+  if (!onDisk) {
+    return vec_.erase(first, last, value);
+  }
+  return routing_iterator<T>(this);
+}
+
 template <typename T, typename AllocT>
 void RVector<T, AllocT>::swap(RVector<T, AllocT> &right) {
-  if (!onDisk) {
-    vec_.swap(right);
-    return;
-  }
-  const char *oldOnDiskLocation = onDiskLocation;
-  onDiskLocation = right.onDiskLocation;
-  right.onDiskLocation = oldOnDiskLocation;
+  RVector<T, AllocT> *tmp = new RVector<T, AllocT>(right);
+  right.vec_.swap(this->vec_);
+  right.file = this->file;
+  right.onDiskLocation = this->onDiskLocation;
+  right.onDisk = this->onDisk;
+  right.onDiskSize = this->onDiskSize;
+
+  this->vec_.swap(tmp->vec_);
+  this->file = tmp->file;
+  this->onDiskLocation = tmp->onDiskLocation;
+  this->onDisk = tmp->onDisk;
+  this->onDiskSize = tmp->onDiskSize;
+
   return;
 }
 
@@ -194,6 +208,18 @@ typename RVector<T, AllocT>::reference RVector<T, AllocT>::operator[](size_t n) 
   }
 }
 
+template<typename T, typename AllocT>
+std::pair<typename RVector<T, AllocT>::iterator, bool>
+RVector<T, AllocT>::push(RVector<T, AllocT> &container, const T &value) {
+  container.push_back(value);
+  return std::make_pair(boost::prior(container.end()), true);
+}
+
+template<typename T, typename AllocT>
+void RVector<T, AllocT>::erase(RVector<T, AllocT> &container, const T& value) {
+  container.erase(container.begin(), container.end(), value);
+}
+
 template <typename T, typename AllocT>
 void RVector<T, AllocT>::push_back(T item) {
   typedef typename std::vector<T>::iterator Iter;
@@ -231,9 +257,8 @@ template <typename T, typename AllocT>
 void RVector<T, AllocT>::resize(size_type n, T val) {
   if (onDisk) {
     vec_.resize(n, val);
-  } else {
-    // Open file, fill with val? Or do nothing?
   }
+  // Else, don't do anything. A file does not need to be resized.
 }
 
 
@@ -241,9 +266,8 @@ template <typename T, typename AllocT>
 void RVector<T, AllocT>::resize(size_type n) {
   if (onDisk) {
     vec_.resize(n);
-  } else {
-    // Open file, fill with val? Or do nothing?
   }
+  // Else, don't do anything. A file does not need to be resized.
 }
 
 /*
