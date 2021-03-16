@@ -1,5 +1,6 @@
 #include "routing_container.h"
 #include "my_dbug.h"
+#include "routing_file_handler.cc"
 
 namespace routing {
 // RVector implementation
@@ -156,7 +157,7 @@ void RVector<T, AllocT>::swap(RVector<T, AllocT> &right) {
  */
 
 template <typename T, typename AllocT>
-typename RVector<T, AllocT>::reference RVector<T, AllocT>::operator[](size_t n) {
+typename RVector<T, AllocT>::reference RVector<T, AllocT>::operator[](size_type n) {
   if (!onDisk) {
     DBUG_LOG("Routing", "Return from internal vector: ");
     return vec_[n];
@@ -166,6 +167,7 @@ typename RVector<T, AllocT>::reference RVector<T, AllocT>::operator[](size_t n) 
    * Make sure iteration starts from the beginning of
    * file each time
    */
+  /*
   if (file && file.is_open()) {
     file.close();
   }
@@ -179,10 +181,14 @@ typename RVector<T, AllocT>::reference RVector<T, AllocT>::operator[](size_t n) 
     DBUG_LOG("Routing", "Return from disk: ");
     return t;
   }
+  */
+  DBUG_LOG("Routing", "Return from disk: ");
+  T t = routing_file_handler<T>::readNth(n);
+  return t;
 }
 
 template <typename T, typename AllocT>
-typename RVector<T, AllocT>::reference RVector<T, AllocT>::operator[](size_t n) const {
+typename RVector<T, AllocT>::reference RVector<T, AllocT>::operator[](size_type n) const {
   if (!onDisk) {
     DBUG_LOG("Routing", "Return from internal vector: ");
     return vec_[n];
@@ -192,6 +198,7 @@ typename RVector<T, AllocT>::reference RVector<T, AllocT>::operator[](size_t n) 
    * Make sure iteration starts from the beginning of
    * file each time
    */
+  /*
   std::ifstream loc_file;
   if (loc_file && loc_file.is_open()) {
     loc_file.close();
@@ -206,6 +213,10 @@ typename RVector<T, AllocT>::reference RVector<T, AllocT>::operator[](size_t n) 
     DBUG_LOG("Routing", "Return from disk: ");
     return t;
   }
+  */
+  DBUG_LOG("Routing", "Return from disk: ");
+  T t = routing_file_handler<T>::readNth(n);
+  return t;
 }
 
 template<typename T, typename AllocT>

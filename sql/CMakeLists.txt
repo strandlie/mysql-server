@@ -316,6 +316,12 @@ SET(SQL_GIS_SOURCES
   options_parser.cc
 )
 
+SET(SQL_ROUTING_SOURCES
+  routing/graph_routing.cc
+  routing/routing_container.cc
+  routing/routing_iterator.cc
+  routing/routing_file_handler.cc)
+
 SET(SQL_SHARED_SOURCES
   abstract_query_plan.cc
   auth/auth_acls.cc
@@ -566,10 +572,9 @@ SET(SQL_SHARED_SOURCES
   tztime.cc
   uniques.cc
   xa.cc
-  routing/graph_routing.cc
-        routing/routing_container.cc
   join_optimizer/hypergraph.cc
 )
+
 
 # BISON_TARGET(<Name> <YaccInput> <CodeOutput>
 #              [COMPILE_FLAGS <flags>]
@@ -706,8 +711,7 @@ SET(SQL_SOURCE
   sql_client.cc
   srv_session.cc
   srv_session_info_service.cc
-  srv_session_service.cc
-        routing/routing_iterator.cpp routing/routing_file_handler.cc)
+  srv_session_service.cc)
 
 IF(NOT WIN32)
   LIST(APPEND SQL_SOURCE mysqld_daemon.cc)
@@ -794,14 +798,17 @@ TARGET_LINK_LIBRARIES(sql_main ${MYSQLD_STATIC_PLUGIN_LIBS}
   mysql_server_component_services mysys strings vio
   binlogevents_static ${LIBWRAP} ${LIBCRYPT} ${LIBDL} ${SSL_LIBRARIES})
 
+ADD_LIBRARY(sql_routing STATIC ${SQL_ROUTING_SOURCES})
 ADD_LIBRARY(sql_gis STATIC ${SQL_GIS_SOURCES})
 ADD_DEPENDENCIES(sql_gis GenServerSource)
 ADD_DEPENDENCIES(sql_gis GenDigestServerSource)
 ADD_DEPENDENCIES(sql_gis GenBootstrapPriv)
 ADD_DEPENDENCIES(sql_gis GenSysSchema)
 ADD_DEPENDENCIES(sql_gis GenError)
-TARGET_LINK_LIBRARIES(sql_gis sql_dd sql_main)
+TARGET_LINK_LIBRARIES(sql_gis sql_routing sql_dd sql_main)
 SET_TARGET_PROPERTIES(sql_gis PROPERTIES LINK_INTERFACE_MULTIPLICITY 3)
+
+find_package(Boost REQUIRED COMPONENTS graph)
 
 # This typically saves a few hundred megabytes of disk space.
 IF(COMPRESS_DEBUG_SECTIONS)
@@ -841,6 +848,7 @@ IF(SOLARIS AND MY_COMPILER_IS_GNU AND
     COMPILE_FLAGS "-O0"
     )
 ENDIF()
+
 
 ADD_LIBRARY(sql_dd STATIC ${DD_SOURCES})
 ADD_DEPENDENCIES(sql_dd GenFixPrivs)

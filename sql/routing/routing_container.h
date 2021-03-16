@@ -3,7 +3,7 @@
 #include <iostream>
 #include <vector>
 #include "boost/pending/container_traits.hpp"
-#include "routing_iterator.cpp"
+#include "routing_iterator.cc"
 #include "sql/current_thd.h"
 #include "sql/sql_class.h"
 
@@ -29,7 +29,7 @@ struct RVector {
    */
 
   // Typedefs
-  typedef size_t size_type;
+  typedef unsigned long size_type;
   typedef typename AllocT::difference_type difference_type;
   typedef T& reference;
   typedef T* pointer;
@@ -109,8 +109,8 @@ struct RVector {
   void push_back(T item);
   void resize(size_type n, T val);
   void resize(size_type n);
-  T &operator[](size_t n);
-  T &operator[](size_t n) const;
+  reference operator[](size_type n);
+  reference operator[](size_type n) const;
 
   /*
    *** END *** VECTOR REQUIRED
