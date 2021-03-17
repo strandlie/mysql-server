@@ -15,12 +15,9 @@
 #include <boost/property_map/property_map.hpp>
 #include "my_dbug.h"
 #include "mysqld_error.h"
+#include "routing_container.cc"
 #include "sql/malloc_allocator.h"
 #include "sql_string.h"
-#include "routing_container.h"
-
-
-
 
 /**
  * CUSTOM ALLOCATOR
@@ -29,7 +26,8 @@ namespace boost {
 struct vecS_profiled {};
 template <typename ValueType>
 struct container_gen<vecS_profiled, ValueType> {
-  typedef routing::RVector<ValueType, Routing_allocator<ValueType>> type;
+  //typedef routing::RVector<ValueType, Routing_allocator<ValueType>> type;
+  typedef routing::RVector<ValueType> type;
 };
 
 template <>
@@ -71,8 +69,10 @@ class Graph_router {
 
  public:
   typedef b::graph_traits<Graph>::vertex_descriptor Vertex;
-  std::vector<double, Routing_allocator<double>> distances;
-  std::vector<Vertex, Routing_allocator<Vertex>> predecessors;
+  //std::vector<double, Routing_allocator<double>> distances;
+  std::vector<double> distances;
+  //std::vector<Vertex, Routing_allocator<Vertex>> predecessors;
+  std::vector<Vertex> predecessors;
   Vertex currentSource;
   Graph_router(std::vector<Edge> edges, std::vector<double> weights) : G() {
     if (edges.size() != weights.size()) {
@@ -86,14 +86,17 @@ class Graph_router {
     edges.clear();
     weights.clear();
 
-    predecessors = std::vector<Vertex, Routing_allocator<Vertex>>(
+    /*predecessors = std::vector<Vertex, Routing_allocator<Vertex>>(
         num_vertices(G), b::graph_traits<Graph>::null_vertex());
     distances = std::vector<double, Routing_allocator<double>>(num_vertices(G));
+    */
+    predecessors = std::vector<Vertex>(num_vertices(G), b::graph_traits<Graph>::null_vertex());
+    distances = std::vector<double>(num_vertices(G));
   }
 
   Vertex getSource(int id);
   void executeDijkstra(Vertex source);
   void getDistances(String *str);
-  void getDistancesTo(int id, String *str);
-  void getPredecessorsTo(int id, String *str);
+  void getDistancesTo(unsigned long id, String *str);
+  void getPredecessorsTo(unsigned long id, String *str);
 };

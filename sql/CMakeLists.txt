@@ -318,8 +318,7 @@ SET(SQL_GIS_SOURCES
 
 SET(SQL_ROUTING_SOURCES
   routing/graph_routing.cc
-  routing/routing_container.cc
-  routing/routing_iterator.cc
+        routing/routing_iterator.cc
   routing/routing_file_handler.cc)
 
 SET(SQL_SHARED_SOURCES

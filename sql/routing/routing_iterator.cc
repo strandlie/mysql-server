@@ -35,16 +35,16 @@ class routing_iterator
 
  public:
 
-  routing_iterator(std::vector<T> &vec, bool onDisk)
-      : vec_(vec), onDisk(onDisk) {}
+  routing_iterator(std::vector<T> vec, bool onDisk)
+      : vec_(vec), onDisk(onDisk), pointer_{0} {}
 
-  routing_iterator(std::vector<T> &vec, bool onDisk, size_t size)
+  routing_iterator(std::vector<T> vec, bool onDisk, size_t size)
       : vec_(vec), onDisk(onDisk), pointer_(size) {}
 
   routing_iterator(const self_type &iter)
-      : vec_(iter.vec_), pointer_(iter.pointer_), onDisk(iter.onDisk) {}
+      : vec_(iter.vec_), onDisk(iter.onDisk), pointer_(iter.pointer_){}
 
-  routing_iterator() : vec_(), pointer_{0}, onDisk{false} {}
+  routing_iterator() : vec_(), onDisk{false}, pointer_{0} {}
 
  private:
   friend class boost::iterator_core_access;
@@ -65,62 +65,20 @@ class routing_iterator
     return this->pointer_ == other.pointer_;
   }
 
-  reference const dereference() const {
+  reference dereference() const {
     if (!onDisk) {
-      return const_cast<const reference>(vec_.at(pointer_));
+      return const_cast<reference>(vec_.at(pointer_));
     }
     T t = routing_file_handler<T>::readNth(pointer_);
     return t;
-  };
-
-
-  /*
-  void swap(routing_iterator<T> &other) {
-    routing_iterator<T> *tmp = new routing_iterator<T>(other);
-    other.onDisk = this->onDisk;
-    other.vec_.swap(this->vec_);
-    other.pointer_ = this->pointer_;
-
-    this->onDisk = tmp->onDisk;
-    this->vec_.swap(tmp->vec_);
-    this->pointer_ = tmp->pointer_;
   }
-
-  self_type operator++() { self_type i = *this; pointer_++; return i; } // Pre-increment
-  self_type operator++(int junk) { pointer_++; return *this; }          // Post-increment
-  self_type operator--() { self_type i = *this; pointer_--; return i; } // Pre-decrement
-  self_type operator--(int junk) { pointer_--; return *this; }         // Post-decrement
-  bool operator==(const self_type &right) const { return pointer_ == right.pointer_; }
-  bool operator!=(const self_type &right) const { return !(*this == right); }
-
-  reference operator*() {
-    if (onDisk) {
-      T t = routing_file_handler<T>::readNth(pointer_);
-      return t;
-    }
-    return vec_.at(pointer_);
-  }
-
-  pointer operator->() {
-    if (onDisk) {
-      T t = routing_file_handler<T>::readNth(pointer_);
-      return &t;
-    }
-    return &vec_.at(pointer_);
-  }
-
-  routing_iterator &operator=(const routing_iterator &other) {
-    routing_iterator<T>(other).swap(*this);
-    return *this;
-  }
-  */
 
 };
 
 template<typename T>
 class const_routing_iterator
     : public boost::iterator_facade<
-        routing_iterator<T>,
+        const_routing_iterator<T>,
         T const,
         boost::bidirectional_traversal_tag,
         T&,
@@ -132,8 +90,8 @@ class const_routing_iterator
 
   typedef const_routing_iterator self_type;
   typedef T value_type;
-  typedef T const& reference;
-  typedef T const* pointer;
+  typedef const T& reference;
+  typedef const T* pointer;
   typedef int32_t difference_type;
   typedef std::forward_iterator_tag iterator_category;
 
@@ -143,7 +101,7 @@ class const_routing_iterator
 
   const_routing_iterator(std::vector<T> &vec, bool onDisk) : vec_(vec), onDisk(onDisk) {}
 
-  const_routing_iterator(std::vector<T> &vec, bool onDisk, int size) : vec_(vec), onDisk(onDisk), pointer_(size) {}
+  const_routing_iterator(std::vector<T> &vec, bool onDisk, size_t size) : vec_(vec), onDisk(onDisk), pointer_(size) {}
 
   const_routing_iterator(const self_type &iter) : vec_(iter.vec_), pointer_(iter.pointer_), onDisk(iter.onDisk) {}
 
@@ -174,49 +132,8 @@ class const_routing_iterator
     }
     T t = routing_file_handler<T>::readNth(pointer_);
     return t;
-  };
-
-  /*
-  void swap(const_routing_iterator<T> &other) {
-    const_routing_iterator<T> *tmp = new const_routing_iterator<T>(other);
-    other.onDisk = this->onDisk;
-    other.vec_.swap(this->vec_);
-    other.pointer_ = this->pointer_;
-
-    this->onDisk = tmp->onDisk;
-    this->vec_.swap(tmp->vec_);
-    this->pointer_ = tmp->pointer_;
   }
 
-  self_type operator++() { self_type i = *this; pointer_++; return i; } // Pre-increment
-  self_type operator++(int junk) { pointer_++; return *this; }          // Post-increment
-  self_type operator--() { self_type i = *this; pointer_--; return i; } // Pre-decrement
-  self_type operator--(int junk) { pointer_--; return *this; }         // Post-decrement
-  bool operator==(const self_type& right) { return pointer_ == right.pointer_; }
-  bool operator !=(const self_type& right) { return !(this == right);}
-
-  reference operator*() const {
-    if (onDisk) {
-      T t = routing_file_handler<T>::readNth(pointer_);
-      return t;
-    }
-    return &vec_[pointer_];
-
-  }
-
-  pointer operator->() const {
-    if (onDisk) {
-      T t = routing_file_handler<T>::readNth(pointer_);
-      return &t;
-    }
-    return &vec_.at(pointer_);
-  }
-
-  self_type &operator=(const self_type &other) {
-    const_routing_iterator<T>(other).swap(*this);
-    return *this;
-  }
-  */
 };
 
 

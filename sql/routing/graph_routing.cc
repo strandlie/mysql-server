@@ -36,7 +36,7 @@ void Graph_router::executeDijkstra(Vertex source) {
  * @param id The id of the vertex we want to find the predecessors to
  * @param str The string we (eventually) want to write the result to
  */
-void Graph_router::getPredecessorsTo(int id, String *str) {
+void Graph_router::getPredecessorsTo(unsigned long id, String *str) {
   if (predecessors.size() == 0) {
     memcpy(str, nullptr, 0);
     return;
@@ -89,7 +89,7 @@ void Graph_router::getDistances(String *str) {
  * @param id The id of the vertex we want the distance to
  * @param str A result string to (eventually) write the result to
  */
-void Graph_router::getDistancesTo(int id, String* str) {
+void Graph_router::getDistancesTo(unsigned long id, String* str) {
   if (distances.size() == 0) {
     memcpy(str, nullptr, 0);
     return;

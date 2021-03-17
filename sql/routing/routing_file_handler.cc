@@ -4,6 +4,7 @@
 
 #include <fstream>
 #include <iostream>
+#include <boost/archive/text_oarchive.hpp>
 
 #ifndef MYSQL_ROUTING_FILE_HANDLER_H
 #define MYSQL_ROUTING_FILE_HANDLER_H
@@ -25,6 +26,15 @@ class routing_file_handler {
       }
     }
     return *t;
+  }
+
+  static void push(T element) {
+    char const *onDiskLocation = "/var/tmp/mysql_routing_spillfile";
+    std::ofstream file;
+    file.open(onDiskLocation, std::ios::out);
+
+    boost::archive::text_oarchive oa(file);
+    oa << element;
   }
 
 };
