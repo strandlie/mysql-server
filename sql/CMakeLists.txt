@@ -807,7 +807,8 @@ ADD_DEPENDENCIES(sql_gis GenError)
 TARGET_LINK_LIBRARIES(sql_gis sql_routing sql_dd sql_main)
 SET_TARGET_PROPERTIES(sql_gis PROPERTIES LINK_INTERFACE_MULTIPLICITY 3)
 
-find_package(Boost REQUIRED COMPONENTS graph)
+find_package(Boost 1.73 REQUIRED graph serialization)
+target_link_libraries(sql_routing PRIVATE Boost::serialization)
 
 # This typically saves a few hundred megabytes of disk space.
 IF(COMPRESS_DEBUG_SECTIONS)
