@@ -25,9 +25,9 @@ T &routing_file_handler<T>::readNth(int n) {
   auto t = new T;
 
   if (file && file.is_open()) {
-    //ia >> t;
+    ia >> t;
     for (int i = 0; i < n; i++) {
-      //ia >> t;
+      ia >> t;
     }
   }
   return *t;

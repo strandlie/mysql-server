@@ -99,7 +99,14 @@ class RVector {
    *** SERIALIZATION
    */
 
-  //void serialize
+  template <class Archive>
+  void serialize(Archive &ar, const unsigned int version) {
+    ar &onDiskLocation;
+    ar &vec_;
+    ar &ram_limit_;
+    ar &onDisk;
+    ar &onDiskSize;
+  }
 
   /*
    *** END *** SERIALIZATION
@@ -379,7 +386,10 @@ struct is_random_access<vecS_profiled> {
 };
 }  // namespace detail
 
-typedef detail::stored_edge_iter<
+// Non Intrusive Serialization
+namespace serialization {
+
+typedef boost::detail::stored_edge_iter<
     unsigned long,
     std::__1::__list_iterator<
         list_edge<unsigned long, property<edge_weight_t, double, no_property>>,
@@ -387,7 +397,13 @@ typedef detail::stored_edge_iter<
     property<edge_weight_t, double, no_property>>
     s_e_iter_t;
 
-typedef detail::adj_list_gen<
+template <class Archive>
+void serialize(Archive &ar, s_e_iter_t data, const unsigned int version) {
+  ar &data.m_target;
+  ar &data.s_prop;
+}
+
+typedef boost::detail::adj_list_gen<
     adjacency_list<vecS_profiled, vecS_profiled, undirectedS, no_property,
                    property<edge_weight_t, double, no_property>, no_property,
                    listS>,
@@ -395,20 +411,43 @@ typedef detail::adj_list_gen<
     property<edge_weight_t, double, no_property>, no_property,
     listS>::config::stored_vertex stored_vertex_t;
 
-
-// Non Intrusive Serialization
-namespace serialization {
-
-template <class Archive>
-void serialize(Archive &ar, s_e_iter_t data, const unsigned int version) {
-  ar &data.m_target;
-  ar &data.s_prop;
-}
-
 template <class Archive>
 void serialize(Archive &ar, stored_vertex_t data, const unsigned int version) {
   ar &data.m_out_edges;
   ar &data.m_property;
+}
+
+template <class Archive>
+void serialize(Archive &ar, char data, const unsigned int version) {
+  ar &data;
+}
+
+typedef std::__1::vector<
+    boost::detail::stored_edge_iter<
+        unsigned long,
+        std::__1::__list_iterator<
+            boost::list_edge<unsigned long,
+                boost::property<boost::edge_weight_t, double,
+                    boost::no_property>>,
+            void *>,
+        boost::property<boost::edge_weight_t, double, boost::no_property>>,
+    std::__1::allocator<boost::detail::stored_edge_iter<
+        unsigned long,
+        std::__1::__list_iterator<
+            boost::list_edge<unsigned long,
+                boost::property<boost::edge_weight_t, double,
+                    boost::no_property>>,
+            void *>,
+        boost::property<boost::edge_weight_t, double, boost::no_property>>>> s_e_iter_vec_t;
+
+template <class Archive>
+void serialize(Archive &ar, s_e_iter_vec_t data, const unsigned int version) {
+  ar & data;
+}
+
+template <class Archive>
+void serialize(Archive &ar, boost::no_property data, const unsigned int version) {
+  ar & data;
 }
 
 }  // namespace serialization
