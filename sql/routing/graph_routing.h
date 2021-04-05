@@ -66,14 +66,15 @@ class Graph_router {
         num_vertices(G), b::graph_traits<Graph>::null_vertex());
     distances = std::vector<double, Routing_allocator<double>>(num_vertices(G));
     */
-    predecessors = std::vector<Vertex>(num_vertices(G),
-                                       b::graph_traits<Graph>::null_vertex());
+    predecessors = std::vector<Vertex>(num_vertices(G), null_vertex());
     distances = std::vector<double>(num_vertices(G));
   }
 
-  Vertex getSource(int id);
+  static Vertex null_vertex() { return b::graph_traits<Graph>::null_vertex(); }
+  Vertex getSource(unsigned long id);
   void executeDijkstra(Vertex source);
-  void getDistances(String *str);
-  void getDistancesTo(unsigned long id, String *str);
-  void getPredecessorsTo(unsigned long id, String *str);
+  std::vector<std::pair<Vertex, double>> getDistances();
+  std::pair<Vertex, double> getDistancesTo(unsigned long id);
+  std::vector<Vertex> getPredecessorsTo(unsigned long id);
+  String produceString(std::vector<std::pair<Vertex, double>>);
 };

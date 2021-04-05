@@ -316,10 +316,6 @@ SET(SQL_GIS_SOURCES
   options_parser.cc
 )
 
-SET(SQL_ROUTING_SOURCES
-  routing/graph_routing.cc
-        routing/routing_iterator.cc
-  routing/routing_file_handler.cc)
 
 SET(SQL_SHARED_SOURCES
   abstract_query_plan.cc
@@ -797,7 +793,7 @@ TARGET_LINK_LIBRARIES(sql_main ${MYSQLD_STATIC_PLUGIN_LIBS}
   mysql_server_component_services mysys strings vio
   binlogevents_static ${LIBWRAP} ${LIBCRYPT} ${LIBDL} ${SSL_LIBRARIES})
 
-ADD_LIBRARY(sql_routing STATIC ${SQL_ROUTING_SOURCES})
+ADD_LIBRARY(sql_routing STATIC routing/graph_routing.cc)
 ADD_LIBRARY(sql_gis STATIC ${SQL_GIS_SOURCES})
 ADD_DEPENDENCIES(sql_gis GenServerSource)
 ADD_DEPENDENCIES(sql_gis GenDigestServerSource)

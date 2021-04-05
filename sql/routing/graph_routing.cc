@@ -3,22 +3,21 @@
 //
 
 #include "graph_routing.h"
+#include <vector>
 
 class Vertex;
 
-Graph_router::Vertex Graph_router::getSource(int id) {
+Graph_router::Vertex Graph_router::getSource(unsigned long id) {
   using namespace boost;
-  graph_traits<Graph>::vertex_iterator vi;
-  vi = vertices(G).first;
-  Graph_router::Vertex s;
-  for( ; vi != vertices(G).second; ++vi) {
-    s = *vi;
-    if (s == (std::string::size_type) id) {
-      return s;
+  typedef graph_traits<Graph>::vertex_iterator v_iter;
+
+  for(v_iter vi = vertices(G).first ; vi != vertices(G).second; ++vi) {
+    if (*vi == (std::string::size_type) id) {
+      return *vi;
     }
   }
   DBUG_LOG("Routing", "Did not find the node");
-  return -1;
+  return Graph_router::null_vertex();
 }
 
 /**
@@ -34,20 +33,19 @@ void Graph_router::executeDijkstra(Vertex source) {
 /**
  * Get the predecessors for a specific vertex
  * @param id The id of the vertex we want to find the predecessors to
- * @param str The string we (eventually) want to write the result to
  */
-void Graph_router::getPredecessorsTo(unsigned long id, String *str) {
-  if (predecessors.size() == 0) {
-    memcpy(str, nullptr, 0);
-    return;
+std::vector<Graph_router::Vertex> Graph_router::getPredecessorsTo(unsigned long id) {
+  std::vector<Graph_router::Vertex> vec;
+  if (predecessors.empty()) {
+    return vec;
   }
 
   using namespace boost;
 
   typedef graph_traits<Graph>::vertex_iterator vertex_iter;
   std::pair<vertex_iter, vertex_iter> vp;
-  vp = vertices(G);
-  for ( ; vp.first != vp.second; ++vp.first) {
+  for (vp = vertices(G); vp.first != vp.second; ++vp.first) {
+
     Vertex v = *vp.first;
     if (v == id) {
       Vertex parent = v;
@@ -59,49 +57,52 @@ void Graph_router::getPredecessorsTo(unsigned long id, String *str) {
           DBUG_LOG("Routing", "parent(" << current << ") = no parent");
         } else {
           DBUG_LOG("Routing", "parent(" << current << ") = " << parent);
-        };
+          vec.push_back(parent);
+        }
       } while(parent != current && parent != graph_traits<Graph>::null_vertex());
     }
   }
+  return vec;
 
 }
 
-/**
- * Create a pretty-formatted string for all distances in the graph to the source
- * @param str The address to (eventually) write the result string to
- */
-void Graph_router::getDistances(String *str) {
-  if (distances.size() == 0) {
-    memcpy(str, nullptr, 0);
-    return;
+std::vector<std::pair<Graph_router::Vertex, double>> Graph_router::getDistances() {
+  std::vector<std::pair<Graph_router::Vertex, double>> vec;
+  if(distances.empty()) {
+    return vec;
   }
 
-  // TODO: Write to the string, not just debug-print
   DBUG_LOG("Routing", "Distances from start vertex: " << currentSource);
   b::graph_traits<Graph>::vertex_iterator vi;
   for(vi = vertices(G).first; vi != vertices(G).second; ++vi) {
     DBUG_LOG("Routing", "distance(" << index(*vi) << ") = " << distances[*vi]);
+    vec.emplace_back(index(*vi), distances[*vi]);
   }
+  return vec;
 }
 
 /**
  * Only find the distance to a specific vertex
  * @param id The id of the vertex we want the distance to
- * @param str A result string to (eventually) write the result to
  */
-void Graph_router::getDistancesTo(unsigned long id, String* str) {
-  if (distances.size() == 0) {
-    memcpy(str, nullptr, 0);
-    return;
-  }
-
+std::pair<Graph_router::Vertex, double> Graph_router::getDistancesTo(unsigned long id) {
   using namespace boost;
+  if (distances.empty()) {
+    return std::pair<Graph_router::Vertex, double>{ Graph_router::null_vertex(), 0 };
+  }
 
   typedef graph_traits<Graph>::vertex_iterator vertex_iter;
   std::pair<vertex_iter, vertex_iter> vp = vertices(G);
   for ( ; vp.first != vp.second; ++vp.first) {
     if (*vp.first == id) {
       DBUG_LOG("Routing", "distance(" << *vp.first << ") = " << distances[*vp.first]);
+      return std::pair<Graph_router::Vertex, double>(*vp.first, distances[*vp.first]);
     }
   }
+  return std::pair<Graph_router::Vertex, double>{ Graph_router::null_vertex(), 0 };
+}
+
+
+String Graph_router::produceString(std::vector<std::pair<Vertex, double>> pred_list) {
+
 }

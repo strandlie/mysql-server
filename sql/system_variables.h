@@ -500,6 +500,8 @@ struct System_status_var {
   */
   double last_query_cost;
   ulonglong last_query_partial_plans;
+
+  ulong routing_total_size;
 };
 
 /*

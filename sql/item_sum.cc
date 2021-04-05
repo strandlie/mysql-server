@@ -79,7 +79,7 @@
 #include "sql/temp_table_param.h"  // Temp_table_param
 #include "sql/uniques.h"           // Unique
 #include "sql/window.h"
-#include "sql/routing/graph_routing.h"
+#include "sql/routing/graph_routing.cc"
 
 using std::max;
 using std::min;
@@ -6236,10 +6236,10 @@ String *Item_sum_route::val_str(String *str) {
   DBUG_LOG("Routing", "Num edges: " << edges.size());
   Graph_router gr = Graph_router(edges, weights);
   Graph_router::Vertex s = gr.getSource(args[3]->val_int());
-  if (s != -1) {
+  if (s != Graph_router::null_vertex()) {
     gr.executeDijkstra(s);
-    gr.getDistances(str);
-    gr.getPredecessorsTo(args[4]->val_int(), str);
+    std::vector<std::pair<Graph_router::Vertex, double>> dists = gr.getDistances();
+    std::vector<Graph_router::Vertex> preds = gr.getPredecessorsTo(args[4]->val_int());
   }
   //String value{"Hello", 5, &my_charset_utf8mb4_general_ci};
   String *value = new(current_thd->mem_root) String("Hello", 5, &my_charset_utf8mb4_general_ci);

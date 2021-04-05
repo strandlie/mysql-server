@@ -2794,6 +2794,7 @@ public:
         //set_data_type_string(5, collation.collation);
         set_data_type_string(100000, &my_charset_utf8mb4_general_ci);
         m_tmp = String("", 0, &my_charset_utf8mb4_general_ci);
+        
 
       }
 

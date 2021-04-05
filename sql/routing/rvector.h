@@ -1,13 +1,19 @@
 #include <algorithm>
-#include <fstream>
+#include <boost/graph/adjacency_list.hpp>
 #include <iostream>
+#include <memory>
 #include <vector>
 #include "boost/pending/container_traits.hpp"
-#include "routing_iterator.cc"
-#include "sql/current_thd.h"
-//#include "sql/sql_class.h"
-#include <boost/graph/adjacency_list.hpp>
 #include "my_dbug.h"
+#include "routing_iterator.h"
+#include "sql/current_thd.h"
+#include "sql/sql_class.h"
+
+#include <boost/serialization/shared_ptr.hpp>
+#include <boost/serialization/vector.hpp>
+
+#include <boost/uuid/uuid.hpp>
+#include <boost/uuid/uuid_generators.hpp>
 
 typedef unsigned long long int ulonglong;
 
@@ -16,12 +22,13 @@ namespace routing {
 template <typename T>
 class RVector {
  private:
-  char const *onDiskLocation = "/var/tmp/mysql_routing_spillfile";
+  boost::uuids::uuid id;
   std::vector<T> vec_;
   ulonglong ram_limit_;
-  std::fstream file;
   bool onDisk;
   ulonglong onDiskSize;
+
+  inline static ulonglong total_count = 0;
 
  public:
   /*
@@ -29,6 +36,7 @@ class RVector {
    */
 
   // TYPEDEFS
+
   typedef unsigned long size_type;
   typedef int32_t difference_type;
   typedef T &reference;
@@ -45,18 +53,20 @@ class RVector {
    */
   // Copy constructor
   RVector(RVector<T> &r_vector)
-      : vec_(r_vector.vec_),
-        ram_limit_(r_vector.ram_limit_),
-        onDisk(r_vector.onDisk),
-        onDiskSize(r_vector.onDiskSize) {}
+      : id(r_vector.id)
+      , vec_(r_vector.vec_)
+      , ram_limit_(r_vector.ram_limit_)
+      , onDisk(r_vector.onDisk)
+      , onDiskSize(r_vector.onDiskSize) {}
 
   // Move constructor
   // This doesn't actually move anything, since all members are values
   RVector(RVector &&source) noexcept
-      : vec_(source.vec_),
-        ram_limit_(source.ram_limit_),
-        onDisk(source.onDisk),
-        onDiskSize(source.onDiskSize) {
+      : id(source.id)
+      , vec_(source.vec_)
+      , ram_limit_(source.ram_limit_)
+      , onDisk(source.onDisk)
+      , onDiskSize(source.onDiskSize) {
     /*
     source.ram_limit_ = nullptr;
     source.onDisk = nullptr;
@@ -66,31 +76,31 @@ class RVector {
   }
 
   explicit RVector(ulonglong ram_limit)
-      : ram_limit_(ram_limit), onDisk(false), onDiskSize{0} {}
+      : id(boost::uuids::random_generator()())
+      , vec_()
+      , ram_limit_(ram_limit)
+      , onDisk(false)
+      , onDiskSize{0} {}
 
   // Default constructor
-  RVector() {
-    if (false) {
-      // ulonglong ram_limitation =
-      //    fmin(current_thd->variables.tmp_table_size,
-      //    current_thd->variables.max_heap_table_size);
-      // ram_limit_ = ram_limitation;
+  RVector() : id(boost::uuids::random_generator()()), vec_() {
+    if (current_thd) {
+      ulonglong ram_limitation =
+          fmin(current_thd->variables.tmp_table_size,
+               current_thd->variables.max_heap_table_size);
+      ram_limit_ = ram_limitation;
     } else {
       // Fallback
       ram_limit_ = 32000;  // 32kB
     }
+    // current_thd->variables.routing_total_size = 0;
     onDisk = false;
     onDiskSize = 0;
-    // DBUG_LOG("Routing", "Ram-limit set to: " << ram_limit_);
+    DBUG_LOG("Routing", "Ram-limit set to: " << ram_limit_);
   }
 
   // Destructor
-  ~RVector() {
-    if (file && file.is_open()) {
-      file.close();
-    }
-    remove(onDiskLocation);
-  }
+  ~RVector() {}
   /*
    *** END *** CONSTRUCTORS
    */
@@ -100,8 +110,8 @@ class RVector {
    */
 
   template <class Archive>
-  void serialize(Archive &ar, const unsigned int version) {
-    ar &onDiskLocation;
+  void serialize(Archive &ar,
+                 __attribute__((unused)) const unsigned int version) {
     ar &vec_;
     ar &ram_limit_;
     ar &onDisk;
@@ -124,7 +134,7 @@ class RVector {
    * @tparam AllocT The type of the alllocator in the underlying vector
    * @return The new routing iterator routing_iterator
    */
-  routing_iterator<T> begin() { return routing_iterator<T>(vec_, onDisk); }
+  routing_iterator<T> begin() { return routing_iterator<T>(vec_, onDisk, id); }
 
   /**
    * const_routing_iterator<T> does not need AllocT, since the allocator
@@ -132,11 +142,11 @@ class RVector {
    * constructing RVector
    *
    * @tparam T The type of the value contained in the vector
-   * @tparam AllocT The type of the allocator in the undelrying vector
+   * @tparam AllocT The type of the allocator in the underlying vector
    * @return the new const routing iterator const_routing_iterator
    */
   const_routing_iterator<T> begin() const {
-    return const_routing_iterator<T>(vec_, onDisk);
+    return const_routing_iterator<T>(vec_, onDisk, id);
   }
 
   /**
@@ -149,8 +159,8 @@ class RVector {
    * @return The routing iterator routing_iterator
    */
   routing_iterator<T> end() {
-    return onDisk ? routing_iterator<T>(vec_, true, onDiskSize)
-                  : routing_iterator<T>(vec_, false, vec_.size());
+    return onDisk ? routing_iterator<T>(vec_, true, onDiskSize, id)
+                  : routing_iterator<T>(vec_, false, vec_.size(), id);
   }
 
   /**
@@ -162,8 +172,8 @@ class RVector {
    * @return The const routing iterator const_routing_iterator
    */
   const_routing_iterator<T> end() const {
-    return onDisk ? const_routing_iterator<T>(vec_, true, onDiskSize)
-                  : const_routing_iterator<T>(vec_, false, vec_.size());
+    return onDisk ? const_routing_iterator<T>(vec_, true, onDiskSize, id)
+                  : const_routing_iterator<T>(vec_, false, vec_.size(), id);
   }
 
   // THESE ARE NOT IMPLEMENTED BECAUSE I DON'T THINK THEY ARE REQUIRED FOR THIS
@@ -189,55 +199,55 @@ class RVector {
     if (!onDisk) {
       return vec_.empty();
     }
-
-    if (file && file.is_open()) {
-      T *t = new T;
-      file >> t;
-      return t == nullptr;
-    }
-    return true;
+    return onDiskSize < 1;
   }
 
-  routing_iterator<T> erase(iterator where) {
+  /**
+   *
+   * @param position
+   * @return An iterator pointing to the element that follows the last deleted element
+   */
+  routing_iterator<T> erase(iterator position) {
+    if (RVector::total_count <= 0) {
+      RVector::total_count = 0;
+    } else {
+      RVector::total_count--;
+    }
+
     if (!onDisk) {
-      return vec_.erase(where);
+      return vec_.erase(position);
     }
-
-    // TODO: Copy the file, except the relevant line, to a new file. Set the
-    // size -1
-    return routing_iterator<T>(this);
+    routing_file_handler<T>::deleteNth(position.get_pointer(), onDiskSize, id);
+    onDiskSize--;
+    return position;
   }
 
+  /**
+   *
+   * @param first
+   * @param last
+   * @return An iterator pointing to the element that follows the last deleted element
+   */
   routing_iterator<T> erase(iterator first, iterator last) {
     if (!onDisk) {
       return vec_.erase(first, last);
     }
-
-    // TODO: Copy the file, except the relevant line, to a new file. Set the
-    // size correctly
-    return routing_iterator<T>(this);
+    auto diff = last.get_pointer() - first.get_pointer();
+    routing_file_handler<T>::deleteBetweenMandN(first.get_pointer(), last.get_pointer(), onDiskSize, id);
+    last.setTo(last.get_pointer() - diff);
+    return last;
   }
 
-  routing_iterator<T> erase(iterator first, iterator last, const T &value) {
-    if (!onDisk) {
-      return vec_.erase(first, last, value);
-    }
-    // TODO: Copy the file, except the relevant line, to a new file. Set the
-    // size correctly
-    return routing_iterator<T>(this);
-  }
   void clear() { erase(begin(), end()); }
 
   void swap(RVector &right) {
     auto tmp = new RVector<T>(right);
     right.vec_.swap(this->vec_);
-    right.file = this->file;
     right.onDiskLocation = this->onDiskLocation;
     right.onDisk = this->onDisk;
     right.onDiskSize = this->onDiskSize;
 
     this->vec_.swap(tmp->vec_);
-    this->file = tmp->file;
     this->onDiskLocation = tmp->onDiskLocation;
     this->onDisk = tmp->onDisk;
     this->onDiskSize = tmp->onDiskSize;
@@ -262,51 +272,33 @@ class RVector {
   }
 
   void push_back(T item) {
-    typedef typename std::vector<T>::iterator Iter;
-    const std::size_t current_size = vec_.size() * sizeof(T);
-    DBUG_LOG("Routing", "Number of elements: " << vec_.size());
-    DBUG_LOG("Routing", "Current size: " << current_size);
+    const std::size_t current_size = RVector::total_count * sizeof(T);
+
     if (current_size + sizeof(item) > ram_limit_ && !onDisk) {
       DBUG_LOG("Routing", "Too large. Spilling to disk");
-      // Spill to disk
-      if (!file.is_open()) {
-        remove(onDiskLocation);
-        file.open(onDiskLocation, std::ios::out | std::ios::app);
-      }
-      for (Iter it = vec_.begin(); it != vec_.end(); ++it) {
-        // file << *it << std::endl; // Does this work with reading?
-      }
-      // file << item << std::endl;  // Does this work with reading?
-      file.close();
-      onDisk = true;
-      onDiskSize =
-          vec_.size() +
-          1;  // +1 since the first element too large triggers the conversion
-
+      // Spill over to disk
+      moveExistingToDisk();
+      routing_file_handler<T>::push(item, id);
+      onDiskSize++;
     } else if (onDisk) {
-      if (!file.is_open()) {
-        file.open(onDiskLocation, std::ios::out | std::ios::app);
-      }
-      // file << item << std::endl;
-      file.close();
+      // Add to existing file on disk
+      routing_file_handler<T>::push(item, id);
       onDiskSize++;
     } else {
+      // Add to memory
       vec_.push_back(item);
+      RVector::incrMemFtpr(1); // Only increase memory footprint when actually in memory
     }
   }
 
-  void resize(size_type n, T val) {
-    if (onDisk) {
-      vec_.resize(n, val);
-    }
-    // Else, don't do anything. A file does not need to be resized.
+  /*
+  void resize(size_type n, const T& val) {
+    doResize(n, val);
   }
+  */
 
   void resize(size_type n) {
-    if (onDisk) {
-      vec_.resize(n);
-    }
-    // Else, don't do anything. A file does not need to be resized.
+    doResize(n);//, T());
   }
 
   reference operator[](size_type n) {
@@ -315,50 +307,106 @@ class RVector {
       return vec_[n];
     }
 
-    /*
-     * Make sure iteration starts from the beginning of
-     * file each time
-     */
-    /*
-    std::ifstream loc_file;
-    if (loc_file && loc_file.is_open()) {
-      loc_file.close();
-    }
-    loc_file.open(onDiskLocation, std::ios::in);
-    if (loc_file && loc_file.is_open()) {
-      T *t = new T;
-      loc_file >> t;
-      for (int i = 0; i < n; i++) {
-        loc_file >> t;
-      }
-      DBUG_LOG("Routing", "Return from disk: ");
-      return t;
-    }
-    */
     DBUG_LOG("Routing", "Return from disk: ");
-    T t = routing_file_handler<T>::readNth(n);
-    return t;
+    auto t = routing_file_handler<T>::readNth(n, id);
+    return *t;
   }
 
   const_reference operator[](size_type n) const {
     if (!onDisk) {
       DBUG_LOG("Routing", "Return from internal vector: ");
-      const T *result = const_cast<T *>(&vec_[n]);
+      const T *result = const_cast<const T *>(&vec_[n]);
       return *result;
     }
 
     DBUG_LOG("Routing", "Return from disk: ");
-    T t = routing_file_handler<T>::readNth(n);
-    return t;
+    auto t = routing_file_handler<T>::readNth(n, id);
+    return *t;
   }
 
   /*
    *** END *** VECTOR REQUIRED
    */
+ private:
+  static void incrMemFtpr(ulonglong n) { RVector::total_count += n; }
+
+  static void decrMemFtpr(ulonglong n) {
+    if ((RVector::total_count - n) <= 0) {
+      RVector::total_count = 0;
+    } else {
+      RVector::total_count -= n;
+    }
+  }
+
+  void moveExistingToDisk() {
+    typedef typename std::vector<T>::iterator Iter;
+    bool first = true;
+    for (Iter it = vec_.begin(); it != vec_.end(); ++it) {
+      routing_file_handler<T>::push(*it, id, first);
+      first = false;
+    }
+    onDisk = true;
+    onDiskSize = vec_.size();
+
+  }
+
+  /**
+   * One nuance to this function is that it may be called for one instance after
+   * another instance has caused the total size of RVectors to go past the limit.
+   *
+   * To work toward honoring the ram_limit_ this RVector will then
+   * resize and move to disk.
+   *
+   * @param n The new size
+   * @param val The value to fill any new spots with
+   */
+  void doResize(size_type n) { //, const T& val) {
+    const std::size_t total_mem_footprint = RVector::total_count * sizeof(T);
+    long difference = n - vec_.size();
+    if (total_mem_footprint + (difference * sizeof(T)) > ram_limit_ && !onDisk) {
+      // If the RVectors are currently in memory, and resizing will make
+      // the memory footprint larger than the limit; move to disk.
+      // This will happen for each existing RVector as it is pushed
+      // to or resized.
+
+      if (n > vec_.size()) {
+        // If we resize to larger than current size, move to disk immediately
+        moveExistingToDisk();
+        for (ulong i = 0; i < n - vec_.size(); i++) {
+          routing_file_handler<T>::push(T()/*val*/, id);
+        }
+      } else {
+        // If we resize to smaller than or equal to the current size,
+        // resize first and then move to disk
+        vec_.resize(n);//, val);
+        moveExistingToDisk();
+
+      }
+    } else if (!onDisk) {
+      // If the RVectors are currently in memory, and resizing will still be
+      // within the limit. Resize in memory.
+      vec_.resize(n);//,val);
+    } else {
+      // The RVector is guaranteed onDisk already. Resize appropriately
+      if (n > onDiskSize) {
+        for (unsigned long i = 0; i < (n - onDiskSize); i++) {
+          routing_file_handler<T>::push(T()/*val*/, id);
+        }
+      } else if (n < onDiskSize) {
+        routing_file_handler<T>::deleteAfterN(n, id);
+      }
+      // Else n == onDiskSize. Don't write or delete anyting
+      onDiskSize = n;
+    }
+
+
+  }
+
 
   /*
    *** END *** METHODS
    */
+
 };
 
 }  // namespace routing
@@ -398,7 +446,8 @@ typedef boost::detail::stored_edge_iter<
     s_e_iter_t;
 
 template <class Archive>
-void serialize(Archive &ar, s_e_iter_t data, const unsigned int version) {
+void serialize(Archive &ar, s_e_iter_t data,
+               __attribute__((unused)) const unsigned int version) {
   ar &data.m_target;
   ar &data.s_prop;
 }
@@ -412,42 +461,22 @@ typedef boost::detail::adj_list_gen<
     listS>::config::stored_vertex stored_vertex_t;
 
 template <class Archive>
-void serialize(Archive &ar, stored_vertex_t data, const unsigned int version) {
+void serialize(Archive &ar, stored_vertex_t data,
+               __attribute__((unused)) const unsigned int version) {
   ar &data.m_out_edges;
   ar &data.m_property;
 }
 
 template <class Archive>
-void serialize(Archive &ar, char data, const unsigned int version) {
+void serialize(Archive &ar, char data,
+               __attribute__((unused)) const unsigned int version) {
   ar &data;
 }
 
-typedef std::__1::vector<
-    boost::detail::stored_edge_iter<
-        unsigned long,
-        std::__1::__list_iterator<
-            boost::list_edge<unsigned long,
-                boost::property<boost::edge_weight_t, double,
-                    boost::no_property>>,
-            void *>,
-        boost::property<boost::edge_weight_t, double, boost::no_property>>,
-    std::__1::allocator<boost::detail::stored_edge_iter<
-        unsigned long,
-        std::__1::__list_iterator<
-            boost::list_edge<unsigned long,
-                boost::property<boost::edge_weight_t, double,
-                    boost::no_property>>,
-            void *>,
-        boost::property<boost::edge_weight_t, double, boost::no_property>>>> s_e_iter_vec_t;
-
 template <class Archive>
-void serialize(Archive &ar, s_e_iter_vec_t data, const unsigned int version) {
-  ar & data;
-}
-
-template <class Archive>
-void serialize(Archive &ar, boost::no_property data, const unsigned int version) {
-  ar & data;
+void serialize(Archive &ar, boost::no_property data,
+               __attribute__((unused)) const unsigned int version) {
+  ar &data;
 }
 
 }  // namespace serialization
