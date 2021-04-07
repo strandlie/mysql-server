@@ -31,6 +31,8 @@
 
 #include <algorithm>
 #include <bitset>
+#include <boost/geometry.hpp>
+#include <boost/geometry/strategies/geographic/distance_andoyer.hpp>
 #include <cstring>
 #include <functional>
 #include <string>
@@ -63,6 +65,7 @@
 #include "sql/parse_tree_node_base.h"  // Parse_context
 #include "sql/parse_tree_nodes.h"      // PT_order_list
 #include "sql/parser_yystype.h"
+#include "sql/routing/graph_routing.h"
 #include "sql/sql_array.h"
 #include "sql/sql_class.h"  // THD
 #include "sql/sql_const.h"
@@ -79,7 +82,6 @@
 #include "sql/temp_table_param.h"  // Temp_table_param
 #include "sql/uniques.h"           // Unique
 #include "sql/window.h"
-#include "sql/routing/graph_routing.cc"
 
 using std::max;
 using std::min;
@@ -1890,15 +1892,12 @@ bool Item_sum_sum::resolve_type(THD *thd) {
 
   hybrid_type = Item::type_to_result(data_type());
 
-  DBUG_PRINT("info",
-             ("Type: %s (%d, %d)",
-              (hybrid_type == REAL_RESULT
-                   ? "REAL_RESULT"
-                   : hybrid_type == DECIMAL_RESULT
-                         ? "DECIMAL_RESULT"
-                         : hybrid_type == INT_RESULT ? "INT_RESULT"
-                                                     : "--ILLEGAL!!!--"),
-              max_length, (int)decimals));
+  DBUG_PRINT("info", ("Type: %s (%d, %d)",
+                      (hybrid_type == REAL_RESULT      ? "REAL_RESULT"
+                       : hybrid_type == DECIMAL_RESULT ? "DECIMAL_RESULT"
+                       : hybrid_type == INT_RESULT     ? "INT_RESULT"
+                                                       : "--ILLEGAL!!!--"),
+                      max_length, (int)decimals));
   return false;
 }
 
@@ -5550,7 +5549,7 @@ bool Item_lead_lag::compute() {
 
 template <typename... Args>
 Item_sum_json::Item_sum_json(unique_ptr_destroy_only<Json_wrapper> wrapper,
-                             Args &&... parent_args)
+                             Args &&...parent_args)
     : Item_sum(std::forward<Args>(parent_args)...),
       m_wrapper(std::move(wrapper)) {
   set_data_type_json();
@@ -6204,21 +6203,98 @@ bool Item_rollup_sum_switcher::aggregator_setup(THD *thd) {
   return false;
 }
 
-
 bool Item_sum_route::add() {
-  String value{"", 0, collation.collation};
-  DBUG_LOG("Routing", "Argument " << 0 << ": " << args[0]->val_int() << ", argument 1: " << args[1]->val_int() << ", argument 2: " << args[2]->val_real());
-  if (args[0]->null_value || args[1]->null_value || args[2]->null_value || args[3]->null_value || args[4]->null_value) {
-    DBUG_LOG("Routing", "One of the arguments was null. Cannot route");
-    return true;
+  for (int i = 0; i <= 8; i++) {
+    if (args[i]->null_value) {
+      DBUG_LOG("Routing", "One of the arguments was null. Cannot route");
+      return true;
+    }
   }
-  Edge e(args[0]->val_int(), args[1]->val_int());
-  edges.push_back(e);
-  weights.push_back(args[2]->val_real());
-  //if (Item_sum_num::add()) return true;
+
+  if (source_point_valid() && target_point_valid()) {
+    // Coordinates for both source and target have been found in an earlier
+    // run. Only add this new point if it is within defined bounding box
+    fix_midpoint_and_radius();
+    add_edge_if_either_end_is_within_radius(source_long, source_lati,
+                                            target_long, target_lati);
+    return false;
+
+  } else if (source_point_valid() && !target_point_valid()) {
+    // We have only found coordinates for source_point_valid earlier
+
+    long target_id = get_long_arg(tgt_node_id);
+    if (target_id == get_long_arg(edge_src_node_id)) {
+      target_long = get_dbl_arg(source_x_lng);
+      target_lati = get_dbl_arg(source_y_lat);
+      fix_midpoint_and_radius();
+      add_edge_if_either_end_is_within_radius(source_long, source_lati,
+                                              target_long, target_lati);
+      return false;
+    }
+
+    if (target_id == get_long_arg(edge_tgt_node_id)) {
+      target_long = get_dbl_arg(target_x_lng);
+      target_lati = get_dbl_arg(target_y_lat);
+      fix_midpoint_and_radius();
+      add_edge_if_either_end_is_within_radius(source_long, source_lati,
+                                              target_long, target_lati);
+      return false;
+    }
+
+  } else if (!source_point_valid() && target_point_valid()) {
+    // We have only found coordinates for target_point_valid earlier
+
+    long source_id = get_long_arg(src_node_id);
+    if (source_id == get_long_arg(edge_src_node_id)) {
+      source_long = get_dbl_arg(source_x_lng);
+      source_lati = get_dbl_arg(source_y_lat);
+      fix_midpoint_and_radius();
+      add_edge_if_either_end_is_within_radius(source_long, source_lati,
+                                              target_long, target_lati);
+      return false;
+    }
+
+    if (source_id == get_long_arg(edge_tgt_node_id)) {
+      source_long = get_dbl_arg(target_x_lng);
+      source_lati = get_dbl_arg(target_y_lat);
+      fix_midpoint_and_radius();
+      add_edge_if_either_end_is_within_radius(source_long, source_lati,
+                                              target_long, target_lati);
+      return false;
+    }
+
+  } else {
+    // We have not found coordinates for either
+    // Assume we don't find both for one edge. If so,
+    // it will be caught on the next row
+
+    long source_id = get_long_arg(src_node_id);
+    long target_id = get_long_arg(tgt_node_id);
+    if (source_id == get_long_arg(edge_src_node_id)) {
+      source_long = get_dbl_arg(source_x_lng);
+      source_lati = get_dbl_arg(source_y_lat);
+    }
+
+    if (source_id == get_long_arg(edge_tgt_node_id)) {
+      source_long = get_dbl_arg(target_x_lng);
+      source_lati = get_dbl_arg(target_y_lat);
+    }
+
+    if (target_id == get_long_arg(edge_src_node_id)) {
+      target_long = get_dbl_arg(source_x_lng);
+      target_lati = get_dbl_arg(source_y_lat);
+    }
+
+    if (target_id == get_long_arg(edge_tgt_node_id)) {
+      target_long = get_dbl_arg(target_x_lng);
+      target_lati = get_dbl_arg(target_y_lat);
+    }
+  }
+
+  // If this is hit, add the edge because we could not rule it out
+  add_edge();
   return false;
 }
-
 
 double Item_sum_route::val_real() {
   DBUG_ASSERT(fixed == 1);
@@ -6226,25 +6302,27 @@ double Item_sum_route::val_real() {
   return 12;
 }
 
-
-my_decimal *Item_sum_route::val_decimal(my_decimal *val) {
-  DBUG_TRACE;
-}
+my_decimal *Item_sum_route::val_decimal(my_decimal *val) { DBUG_TRACE; }
 
 String *Item_sum_route::val_str(String *str) {
   if (aggr) aggr->endup();
   DBUG_LOG("Routing", "Num edges: " << edges.size());
   Graph_router gr = Graph_router(edges, weights);
-  Graph_router::Vertex s = gr.getSource(args[3]->val_int());
+  Graph_router::Vertex s = gr.getSource(get_long_arg(src_node_id));
+  String* value;
   if (s != Graph_router::null_vertex()) {
     gr.executeDijkstra(s);
-    std::vector<std::pair<Graph_router::Vertex, double>> dists = gr.getDistances();
-    std::vector<Graph_router::Vertex> preds = gr.getPredecessorsTo(args[4]->val_int());
+    std::vector<std::pair<Graph_router::Vertex, double>> dists =
+        gr.getDistances();
+    std::vector<Graph_router::Vertex> preds =
+        gr.getPredecessorsTo(get_long_arg(tgt_node_id));
+    value = gr.producePredString(preds, get_long_arg(tgt_node_id));
+  } else {
+    // Empty string
+    value = new (current_thd->mem_root)
+        String("", 5, &my_charset_utf8mb4_general_ci);
   }
-  //String value{"Hello", 5, &my_charset_utf8mb4_general_ci};
-  String *value = new(current_thd->mem_root) String("Hello", 5, &my_charset_utf8mb4_general_ci);
   return value;
-
 }
 
 void Item_sum_route::update_field() {
@@ -6264,4 +6342,61 @@ void Item_sum_route::update_field() {
 
 void Item_sum_route::clear() {
   DBUG_LOG("Routing", "clear() is called. This does nothing yet");
+}
+
+void Item_sum_route::add_edge() {
+  Edge e(get_long_arg(edge_src_node_id), get_long_arg(edge_tgt_node_id));
+  edges.push_back(e);
+  weights.push_back(get_dbl_arg(edge_weight));
+}
+
+void Item_sum_route::fix_midpoint_and_radius() {
+  if (mid_long == invalid_lat_lng || mid_lati == invalid_lat_lng ||
+      radius == 0) {
+    mid_long = (source_long + target_long) / 2;
+    mid_lati = (source_lati + target_lati) / 2;
+
+    typedef boost::geometry::cs::geographic<boost::geometry::radian>
+        Wgs84Coords;
+    typedef boost::geometry::model::point<double, 2, Wgs84Coords>
+        GeographicPoint;
+    typedef boost::geometry::srs::spheroid<double> SpheroidType;
+    typedef boost::geometry::strategy::distance::andoyer<SpheroidType>
+        AndoyerStrategy;
+
+    SpheroidType spheroid;
+    AndoyerStrategy andoyer(spheroid);
+
+    GeographicPoint route_mid_point = GeographicPoint(mid_long, mid_lati);
+    GeographicPoint route_end_point = GeographicPoint(source_long, source_lati);
+    radius =
+        boost::geometry::distance(route_end_point, route_mid_point, andoyer) *
+        2;
+  }
+}
+
+void Item_sum_route::add_edge_if_either_end_is_within_radius(
+    double source_long, double source_lat, double target_long,
+    double target_lat) {
+  typedef boost::geometry::cs::geographic<boost::geometry::radian> Wgs84Coords;
+  typedef boost::geometry::model::point<double, 2, Wgs84Coords> GeographicPoint;
+  typedef boost::geometry::srs::spheroid<double> SpheroidType;
+  typedef boost::geometry::strategy::distance::andoyer<SpheroidType>
+      AndoyerStrategy;
+
+  SpheroidType spheroid;
+  AndoyerStrategy andoyer(spheroid);
+
+  GeographicPoint route_mid_point = GeographicPoint(mid_long, mid_lati);
+  GeographicPoint edge_source_point = GeographicPoint(source_long, source_lat);
+  GeographicPoint edge_target_point = GeographicPoint(target_long, target_lat);
+  if (boost::geometry::distance(edge_source_point, route_mid_point, andoyer) <
+          radius ||
+      boost::geometry::distance(edge_target_point, route_mid_point, andoyer) <
+          radius) {
+    // One of them is within the radius
+    Edge e(get_long_arg(edge_src_node_id), get_long_arg(edge_tgt_node_id));
+    edges.push_back(e);
+    weights.push_back(get_dbl_arg(edge_weight));
+  }
 }

@@ -10,13 +10,12 @@
 #include <include/my_sys.h>
 #include <include/mysql/components/services/mysql_runtime_error_service.h>
 #include <boost/graph/adjacency_list.hpp>
-#include <boost/graph/dijkstra_shortest_paths.hpp>
 #include <boost/graph/graph_traits.hpp>
 #include <boost/property_map/property_map.hpp>
 #include "my_dbug.h"
 #include "mysqld_error.h"
 #include "rvector.h"
-#include "sql/malloc_allocator.h"
+//#include "sql/malloc_allocator.h"
 #include "sql_string.h"
 
 /**
@@ -50,25 +49,10 @@ class Graph_router {
   // std::vector<Vertex, Routing_allocator<Vertex>> predecessors;
   std::vector<Vertex> predecessors;
   Vertex currentSource;
-  Graph_router(std::vector<Edge> edges, std::vector<double> weights) : G() {
-    if (edges.size() != weights.size()) {
-      my_error(ER_WRONG_PARAMETERS_TO_PROCEDURE, MYF(0), "Graph_router");
-      return;
-    }
-    for (std::string::size_type i = 0; i < edges.size(); ++i) {
-      add_edge(edges[i].first, edges[i].second, EdgeWeightProperty(weights[i]),
-               G);
-    }
-    edges.clear();
-    weights.clear();
+  Graph_router(std::vector<Edge> edges, std::vector<double> weights);
 
-    /*predecessors = std::vector<Vertex, Routing_allocator<Vertex>>(
-        num_vertices(G), b::graph_traits<Graph>::null_vertex());
-    distances = std::vector<double, Routing_allocator<double>>(num_vertices(G));
-    */
-    predecessors = std::vector<Vertex>(num_vertices(G), null_vertex());
-    distances = std::vector<double>(num_vertices(G));
-  }
+  Graph_router();
+
 
   static Vertex null_vertex() { return b::graph_traits<Graph>::null_vertex(); }
   Vertex getSource(unsigned long id);
@@ -76,5 +60,6 @@ class Graph_router {
   std::vector<std::pair<Vertex, double>> getDistances();
   std::pair<Vertex, double> getDistancesTo(unsigned long id);
   std::vector<Vertex> getPredecessorsTo(unsigned long id);
-  String produceString(std::vector<std::pair<Vertex, double>>);
+  String *produceDistanceString(std::vector<std::pair<Vertex, double>>);
+  String *producePredString(std::vector<Vertex>, long);
 };

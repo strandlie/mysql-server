@@ -4,8 +4,34 @@
 
 #include "graph_routing.h"
 #include <vector>
+#include <boost/graph/dijkstra_shortest_paths.hpp>
 
 class Vertex;
+
+Graph_router::Graph_router(std::vector<Edge> edges, std::vector<double> weights): G() {
+  if (edges.size() != weights.size()) {
+    my_error(ER_WRONG_PARAMETERS_TO_PROCEDURE, MYF(0), "Graph_router");
+    return;
+  }
+  for (std::string::size_type i = 0; i < edges.size(); ++i) {
+    add_edge(edges[i].first, edges[i].second, EdgeWeightProperty(weights[i]),
+             G);
+  }
+  edges.clear();
+  weights.clear();
+
+  /*predecessors = std::vector<Vertex, Routing_allocator<Vertex>>(
+      num_vertices(G), b::graph_traits<Graph>::null_vertex());
+  distances = std::vector<double, Routing_allocator<double>>(num_vertices(G));
+  */
+  predecessors = std::vector<Vertex>(num_vertices(G), null_vertex());
+  distances = std::vector<double>(num_vertices(G));
+}
+
+Graph_router::Graph_router() : G() {
+  predecessors = std::vector<Vertex>(num_vertices(G), null_vertex());
+  distances = std::vector<double>(num_vertices(G));
+}
 
 Graph_router::Vertex Graph_router::getSource(unsigned long id) {
   using namespace boost;
@@ -20,6 +46,7 @@ Graph_router::Vertex Graph_router::getSource(unsigned long id) {
   return Graph_router::null_vertex();
 }
 
+
 /**
  * Supply the source and execute Dijkstra's single source - all destinations
  * @param source The source to start from
@@ -33,6 +60,8 @@ void Graph_router::executeDijkstra(Vertex source) {
 /**
  * Get the predecessors for a specific vertex
  * @param id The id of the vertex we want to find the predecessors to
+ * @return A vector of the predecessors, with the source node at the
+ * end, and the target node at the beginning
  */
 std::vector<Graph_router::Vertex> Graph_router::getPredecessorsTo(unsigned long id) {
   std::vector<Graph_router::Vertex> vec;
@@ -103,6 +132,27 @@ std::pair<Graph_router::Vertex, double> Graph_router::getDistancesTo(unsigned lo
 }
 
 
-String Graph_router::produceString(std::vector<std::pair<Vertex, double>> pred_list) {
+String *Graph_router::produceDistanceString(std::vector<std::pair<Vertex, double>> dist_map) {
 
+}
+
+String *Graph_router::producePredString(std::vector<Vertex> preds, long tgt_node_id) {
+
+  String *value = new (current_thd->mem_root)
+      String("", 5, &my_charset_utf8mb4_general_ci);
+  std::vector<Graph_router::Vertex>::reverse_iterator rit = preds.rbegin();
+  ++rit;
+  value->append("Source: ");
+  value->append_longlong(*rit);
+  value->append("\n");
+  rit++;
+  for(; rit != preds.rend(); ++rit) {
+    value->append("\t|--> ");
+    value->append_longlong(*rit);
+    value->append("\n");
+  }
+  value->append("Target: ");
+  value->append_longlong(tgt_node_id);
+  value->append("\n");
+  return value;
 }

@@ -34,6 +34,8 @@
 #include <memory>
 #include <string>
 #include <vector>
+//#include <boost/geometry.hpp>
+//#include <boost/optional.hpp>
 
 #include "field_types.h"  // enum_field_types
 #include "m_ctype.h"
@@ -2782,9 +2784,21 @@ class Item_rollup_sum_switcher final : public Item_sum {
 
 
 class Item_sum_route final : public Item_sum_num {
+
+  const double invalid_lat_lng = -200.0; // 200 is not a valid latitude or longitude
+  const long invalid_node_id = -1;
+
  private:
   String m_tmp;
   typedef std::pair<long, long> Edge;
+
+  double source_long = invalid_lat_lng;
+  double source_lati = invalid_lat_lng;
+  double target_long = invalid_lat_lng;
+  double target_lati = invalid_lat_lng;
+  double mid_long = invalid_lat_lng;
+  double mid_lati = invalid_lat_lng;
+  double radius = 0;
 
 public:
   std::vector<Edge> edges;
@@ -2794,8 +2808,6 @@ public:
         //set_data_type_string(5, collation.collation);
         set_data_type_string(100000, &my_charset_utf8mb4_general_ci);
         m_tmp = String("", 0, &my_charset_utf8mb4_general_ci);
-        
-
       }
 
 
@@ -2812,6 +2824,63 @@ public:
   Item_result result_type() const override { return STRING_RESULT; }
   void update_field() override;
   void clear() override;
+
+  bool source_point_valid() {
+    return source_lati != invalid_lat_lng && source_long != invalid_lat_lng;
+  }
+
+  bool target_point_valid() {
+    return target_lati != invalid_lat_lng && target_long != invalid_lat_lng;
+  }
+
+  enum arg_cat {
+    edge_src_node_id,
+    edge_tgt_node_id,
+    edge_weight,
+    source_x_lng,
+    source_y_lat,
+    target_x_lng,
+    target_y_lat,
+    src_node_id,
+    tgt_node_id
+  };
+
+  long get_long_arg(arg_cat category) {
+    switch(category) {
+      case edge_src_node_id:
+        return args[0]->val_int();
+      case edge_tgt_node_id:
+        return args[1]->val_int();
+      case src_node_id:
+        return args[7]->val_int();
+      case tgt_node_id:
+        return args[8]->val_int();
+      default:
+        return invalid_node_id;
+    }
+  }
+
+  double get_dbl_arg(arg_cat category) {
+    switch(category) {
+      case edge_weight:   // Invalid lat_long is also invalid weight
+        return args[2]->val_real();
+      case source_x_lng:
+        return args[3]->val_real();
+      case source_y_lat:
+        return args[4]->val_real();
+      case target_x_lng:
+        return args[5]->val_real();
+      case target_y_lat:
+        return args[6]->val_real();
+      default:
+        return invalid_lat_lng;
+    }
+  }
+
+  void add_edge();
+  void fix_midpoint_and_radius();
+  void add_edge_if_either_end_is_within_radius(double, double, double, double);
+
 
 
 };
