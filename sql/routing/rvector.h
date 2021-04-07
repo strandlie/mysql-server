@@ -386,6 +386,12 @@ class RVector {
       // If the RVectors are currently in memory, and resizing will still be
       // within the limit. Resize in memory.
       vec_.resize(n);//,val);
+      if (difference > 0) {
+        RVector::incrMemFtpr(difference);
+      } else if (difference < 0) {
+        RVector::decrMemFtpr(difference);
+      }
+
     } else {
       // The RVector is guaranteed onDisk already. Resize appropriately
       if (n > onDiskSize) {

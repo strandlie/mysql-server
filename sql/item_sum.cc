@@ -6215,8 +6215,8 @@ bool Item_sum_route::add() {
     // Coordinates for both source and target have been found in an earlier
     // run. Only add this new point if it is within defined bounding box
     fix_midpoint_and_radius();
-    add_edge_if_either_end_is_within_radius(source_long, source_lati,
-                                            target_long, target_lati);
+    add_edge_if_either_end_is_within_radius(get_dbl_arg(source_x_lng), get_dbl_arg(source_y_lat),
+                                            get_dbl_arg(target_x_lng), get_dbl_arg(target_y_lat));
     return false;
 
   } else if (source_point_valid() && !target_point_valid()) {
@@ -6227,8 +6227,8 @@ bool Item_sum_route::add() {
       target_long = get_dbl_arg(source_x_lng);
       target_lati = get_dbl_arg(source_y_lat);
       fix_midpoint_and_radius();
-      add_edge_if_either_end_is_within_radius(source_long, source_lati,
-                                              target_long, target_lati);
+      add_edge_if_either_end_is_within_radius(get_dbl_arg(source_x_lng), get_dbl_arg(source_y_lat),
+                                              get_dbl_arg(target_x_lng), get_dbl_arg(target_y_lat));
       return false;
     }
 
@@ -6236,8 +6236,8 @@ bool Item_sum_route::add() {
       target_long = get_dbl_arg(target_x_lng);
       target_lati = get_dbl_arg(target_y_lat);
       fix_midpoint_and_radius();
-      add_edge_if_either_end_is_within_radius(source_long, source_lati,
-                                              target_long, target_lati);
+      add_edge_if_either_end_is_within_radius(get_dbl_arg(source_x_lng), get_dbl_arg(source_y_lat),
+                                              get_dbl_arg(target_x_lng), get_dbl_arg(target_y_lat));
       return false;
     }
 
@@ -6249,8 +6249,8 @@ bool Item_sum_route::add() {
       source_long = get_dbl_arg(source_x_lng);
       source_lati = get_dbl_arg(source_y_lat);
       fix_midpoint_and_radius();
-      add_edge_if_either_end_is_within_radius(source_long, source_lati,
-                                              target_long, target_lati);
+      add_edge_if_either_end_is_within_radius(get_dbl_arg(source_x_lng), get_dbl_arg(source_y_lat),
+                                              get_dbl_arg(target_x_lng), get_dbl_arg(target_y_lat));
       return false;
     }
 
@@ -6258,8 +6258,8 @@ bool Item_sum_route::add() {
       source_long = get_dbl_arg(target_x_lng);
       source_lati = get_dbl_arg(target_y_lat);
       fix_midpoint_and_radius();
-      add_edge_if_either_end_is_within_radius(source_long, source_lati,
-                                              target_long, target_lati);
+      add_edge_if_either_end_is_within_radius(get_dbl_arg(source_x_lng), get_dbl_arg(source_y_lat),
+                                              get_dbl_arg(target_x_lng), get_dbl_arg(target_y_lat));
       return false;
     }
 
@@ -6390,10 +6390,13 @@ void Item_sum_route::add_edge_if_either_end_is_within_radius(
   GeographicPoint route_mid_point = GeographicPoint(mid_long, mid_lati);
   GeographicPoint edge_source_point = GeographicPoint(source_long, source_lat);
   GeographicPoint edge_target_point = GeographicPoint(target_long, target_lat);
-  if (boost::geometry::distance(edge_source_point, route_mid_point, andoyer) <
-          radius ||
-      boost::geometry::distance(edge_target_point, route_mid_point, andoyer) <
-          radius) {
+  double edge_source_distance_and = boost::geometry::distance(edge_source_point, route_mid_point, andoyer);
+  double edge_target_distance_and = boost::geometry::distance(edge_target_point, route_mid_point, andoyer);
+  double edge_source_distance = boost::geometry::distance(edge_source_point, route_mid_point);
+  double edge_target_distance = boost::geometry::distance(edge_target_point, route_mid_point);
+
+  if (edge_source_distance < radius ||
+   edge_target_distance < radius) {
     // One of them is within the radius
     Edge e(get_long_arg(edge_src_node_id), get_long_arg(edge_tgt_node_id));
     edges.push_back(e);

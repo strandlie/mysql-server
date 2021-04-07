@@ -141,11 +141,7 @@ String *Graph_router::producePredString(std::vector<Vertex> preds, long tgt_node
   String *value = new (current_thd->mem_root)
       String("", 5, &my_charset_utf8mb4_general_ci);
   std::vector<Graph_router::Vertex>::reverse_iterator rit = preds.rbegin();
-  ++rit;
-  value->append("Source: ");
-  value->append_longlong(*rit);
-  value->append("\n");
-  rit++;
+  value->append("Source: \n");
   for(; rit != preds.rend(); ++rit) {
     value->append("\t|--> ");
     value->append_longlong(*rit);
