@@ -100,7 +100,10 @@ class RVector {
   }
 
   // Destructor
-  ~RVector() {}
+  ~RVector() {
+    RVector::decrMemFtpr(vec_.size());
+    routing_file_handler<T>::deleteFileForId(id);
+  }
   /*
    *** END *** CONSTRUCTORS
    */
@@ -211,7 +214,7 @@ class RVector {
     if (RVector::total_count <= 0) {
       RVector::total_count = 0;
     } else {
-      RVector::total_count--;
+      RVector::decrMemFtpr(1);
     }
 
     if (!onDisk) {
@@ -229,10 +232,11 @@ class RVector {
    * @return An iterator pointing to the element that follows the last deleted element
    */
   routing_iterator<T> erase(iterator first, iterator last) {
+    auto diff = last.get_pointer() - first.get_pointer();
     if (!onDisk) {
+      RVector::decrMemFtpr(diff);
       return vec_.erase(first, last);
     }
-    auto diff = last.get_pointer() - first.get_pointer();
     routing_file_handler<T>::deleteBetweenMandN(first.get_pointer(), last.get_pointer(), onDiskSize, id);
     last.setTo(last.get_pointer() - diff);
     return last;
@@ -273,7 +277,6 @@ class RVector {
 
   void push_back(T item) {
     const std::size_t current_size = RVector::total_count * sizeof(T);
-
     if (current_size + sizeof(item) > ram_limit_ && !onDisk) {
       DBUG_LOG("Routing", "Too large. Spilling to disk");
       // Spill over to disk
@@ -328,7 +331,10 @@ class RVector {
    *** END *** VECTOR REQUIRED
    */
  private:
-  static void incrMemFtpr(ulonglong n) { RVector::total_count += n; }
+  static void incrMemFtpr(ulonglong n) {
+    RVector::total_count += n;
+
+  }
 
   static void decrMemFtpr(ulonglong n) {
     if ((RVector::total_count - n) <= 0) {
@@ -482,7 +488,7 @@ void serialize(Archive &ar, char data,
 template <class Archive>
 void serialize(Archive &ar, boost::no_property data,
                __attribute__((unused)) const unsigned int version) {
-  ar &data;
+  //ar &data;
 }
 
 }  // namespace serialization

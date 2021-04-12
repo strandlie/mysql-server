@@ -25,11 +25,12 @@ class routing_file_handler {
   static void deleteNth(ulong n, ulong totalN, boost::uuids::uuid);
   static void deleteAfterN(ulong, boost::uuids::uuid);
   static void deleteBetweenMandN(ulong m, ulong n, ulong total, boost::uuids::uuid id);
+  static void deleteFileForId(boost::uuids::uuid id);
 };
 
 template <typename T>
 std::string routing_file_handler<T>::onDiskLocation =
-    "/var/tmp/mysql_routing_spillfile";
+    "/var/tmp/mysql_routing/";
 
 template <typename T>
 std::shared_ptr<T> routing_file_handler<T>::readNth(ulong n,
@@ -167,5 +168,11 @@ void routing_file_handler<T>::deleteBetweenMandN(ulong m, ulong n, ulong totalN,
 
   remove(origFilePath.c_str());
   rename(tmpFilePath.c_str(), origFilePath.c_str());
+}
+
+template <typename T>
+void routing_file_handler<T>::deleteFileForId(boost::uuids::uuid id) {
+  auto filePath = onDiskLocation + to_string(id);
+  remove(filePath.c_str());
 }
 }  // namespace routing
