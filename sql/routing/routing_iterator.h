@@ -10,7 +10,7 @@
 #ifndef MYSQL_ROUTING_ITERATOR_H
 #define MYSQL_ROUTING_ITERATOR_H
 
-typedef unsigned long long int ulonglong;
+typedef unsigned long long ulonglong;
 
 namespace routing {
 template <typename T>
@@ -30,54 +30,91 @@ class routing_iterator
   // This one is needed by the adjacency_list implementation
   routing_iterator() {}
 
-  routing_iterator(std::vector<T> vec, bool onDisk, boost::uuids::uuid rvector_id)
-      : vec_(vec), onDisk(onDisk), pointer_{0}, rvector_id_(rvector_id) {}
+  routing_iterator(std::vector<T> &vec, boost::uuids::uuid rvector_id,
+                   size_t currentFileIdxInMem, size_t total_size,
+                   size_t ram_limit)
+      : vec_(vec),
+        pointer_(0),
+        rvector_id_(rvector_id),
+        currentFileIdxInMem(0),
+        totalSize(total_size),
+        ram_limit_(ram_limit) {}
 
-  routing_iterator(std::vector<T> vec, bool onDisk, size_t size, boost::uuids::uuid rvector_id)
-      : vec_(vec), onDisk(onDisk), pointer_(size), rvector_id_(rvector_id) {}
+  routing_iterator(std::vector<T> &vec, size_t size,
+                   boost::uuids::uuid rvector_id, size_t currentFileIdxInMem,
+                   size_t total_size, size_t ram_limit)
+      : vec_(vec),
+        pointer_(size),
+        rvector_id_(rvector_id),
+        currentFileIdxInMem(currentFileIdxInMem),
+        totalSize(total_size),
+        ram_limit_(ram_limit) {}
 
   routing_iterator(const self_type &iter)
-      : vec_(iter.vec_), onDisk(iter.onDisk), pointer_(iter.pointer_), rvector_id_(iter.rvector_id_) {}
+      : vec_(iter.vec_),
+        pointer_(iter.pointer_),
+        rvector_id_(iter.rvector_id_),
+        currentFileIdxInMem(iter.currentFileIdxInMem),
+        totalSize(iter.totalSize),
+        ram_limit_(iter.ram_limit_) {}
 
-
-  routing_iterator<T>& operator=(self_type other) {
+  routing_iterator<T> &operator=(self_type other) {
     std::swap(vec_, other.vec_);
-    std::swap(onDisk, other.onDisk);
     std::swap(pointer_, other.pointer_);
+    std::swap(rvector_id_, other.rvector_id_);
+    std::swap(currentFileIdxInMem, other.currentFileIdxInMem);
+    std::swap(totalSize, other.totalSize);
+    std::swap(ram_limit_, other.ram_limit_);
     return *this;
   }
 
  private:
-
   friend class boost::iterator_core_access;
 
   std::vector<T> vec_;
-  bool onDisk;
   size_t pointer_;
   boost::uuids::uuid rvector_id_;
+  size_t currentFileIdxInMem;
+  size_t totalSize;
+  size_t ram_limit_;
 
  public:
-
   void increment() { pointer_++; }
 
   void decrement() { pointer_--; }
 
   void setTo(size_t n) { pointer_ = n; }
 
-  size_t get_pointer() const {
-    return pointer_;
-  }
+  size_t get_pointer() const { return pointer_; }
 
   bool equal(self_type const &other) const {
     return this->pointer_ == other.pointer_;
   }
 
   reference dereference() const {
-    if (!onDisk) {
-      return const_cast<reference>(vec_.at(pointer_));
+    size_t file_idx = getFileIndex(pointer_);
+    (const_cast<routing_iterator *> (this))->changeWorkingSet(file_idx);
+    size_t element_idx = getElementIndex(pointer_);
+    return const_cast<reference>(vec_.at(element_idx));
+  }
+
+  void changeWorkingSet(size_t new_idx) {
+    if (new_idx == currentFileIdxInMem) {
+      return;
     }
-    auto t = routing_file_handler<T>::readNth(pointer_, rvector_id_);
-    return *t;
+    routing_file_handler<T>::pushVectorWithIdx(currentFileIdxInMem, vec_, rvector_id_);
+    vec_ = routing_file_handler<T>::readVectorWithNumber(new_idx, rvector_id_);
+    currentFileIdxInMem = new_idx;
+  }
+
+  size_t getFileIndex(size_t n) const {
+    const size_t max_vec_size = (ram_limit_ / 2) / sizeof(T);
+    return n / max_vec_size;
+  }
+
+  size_t getElementIndex(size_t n) const {
+    const size_t max_vec_size = (ram_limit_ / 2) / sizeof(T);
+    return n % max_vec_size;
   }
 };
 
@@ -98,20 +135,42 @@ class const_routing_iterator
   // This one is needed by the adjacency_list implementation
   const_routing_iterator() {}
 
-  const_routing_iterator(std::vector<T> &vec, bool onDisk, boost::uuids::uuid rvector_id)
-      : vec_(vec), pointer_(0), onDisk(onDisk), rvector_id_(rvector_id)  {}
+  const_routing_iterator(std::vector<T> &vec, boost::uuids::uuid rvector_id,
+                         size_t currentFileIdxInMem, size_t total_size,
+                         size_t ram_limit)
+      : vec_(vec),
+        pointer_(0),
+        rvector_id_(rvector_id),
+        currentFileIdxInMem(currentFileIdxInMem),
+        totalSize(total_size),
+        ram_limit_(ram_limit) {}
 
-  const_routing_iterator(std::vector<T> &vec, bool onDisk, size_t size, boost::uuids::uuid rvector_id)
-      : vec_(vec), pointer_(size), onDisk(onDisk), rvector_id_(rvector_id) {}
+  const_routing_iterator(std::vector<T> &vec, size_t size,
+                         boost::uuids::uuid rvector_id,
+                         size_t currentFileIdxInMem, size_t total_size,
+                         size_t ram_limit)
+      : vec_(vec),
+        pointer_(size),
+        rvector_id_(rvector_id),
+        currentFileIdxInMem(currentFileIdxInMem),
+        totalSize(total_size),
+        ram_limit_(ram_limit) {}
 
   const_routing_iterator(const self_type &iter)
-      : vec_(iter.vec_), pointer_(iter.pointer_), onDisk(iter.onDisk), rvector_id_(iter.rvector_id_) {}
+      : vec_(iter.vec_),
+        pointer_(iter.pointer_),
+        rvector_id_(iter.rvector_id_),
+        currentFileIdxInMem(iter.currentFileIdxInMem),
+        totalSize(iter.totalSize),
+        ram_limit_(iter.ram_limit_) {}
 
-
-  const_routing_iterator<T>& operator=(self_type other) {
+  const_routing_iterator<T> &operator=(self_type other) {
     std::swap(vec_, other.vec_);
-    std::swap(onDisk, other.onDisk);
     std::swap(pointer_, other.pointer_);
+    std::swap(rvector_id_, other.rvector_id_);
+    std::swap(currentFileIdxInMem, other.currentFileIdxInMem);
+    std::swap(totalSize, other.totalSize);
+    std::swap(ram_limit_, other.ram_limit_);
     return *this;
   }
 
@@ -120,8 +179,10 @@ class const_routing_iterator
 
   std::vector<T> const vec_;
   int pointer_;
-  bool onDisk;
   boost::uuids::uuid rvector_id_;
+  size_t currentFileIdxInMem;
+  size_t totalSize;
+  size_t ram_limit_;
 
   void increment() { pointer_++; }
 
@@ -129,19 +190,36 @@ class const_routing_iterator
 
   void setTo(size_t n) { pointer_ = n; }
 
-  size_t get_pointer() const {
-    return pointer_;
-  }
+  size_t get_pointer() const { return pointer_; }
 
   bool equal(self_type const &other) const {
     return this->pointer_ == other.pointer_;
   }
   reference dereference() const {
-    if (!onDisk) {
-      return vec_.at(pointer_);
+    size_t file_idx = getFileIndex(pointer_);
+    changeWorkingSet(file_idx);
+    size_t element_idx = getElementIndex(pointer_);
+    return const_cast<reference>(vec_.at(element_idx));
+  }
+
+  void changeWorkingSet(size_t new_idx) {
+    if (new_idx == currentFileIdxInMem) {
+      return;
     }
-    auto t = routing_file_handler<T>::readNth(pointer_, rvector_id_);
-    return *t;
+    routing_file_handler<T>::pushVectorWithIdx(currentFileIdxInMem, vec_,
+                                               rvector_id_);
+    vec_ = routing_file_handler<T>::readVectorWithNumber(new_idx, rvector_id_);
+    currentFileIdxInMem = new_idx;
+  }
+
+  size_t getFileIndex(size_t n) {
+    const size_t max_vec_size = ram_limit_ / sizeof(T);
+    return n / max_vec_size;
+  }
+
+  size_t getElementIndex(size_t n) {
+    const size_t max_vec_size = ram_limit_ / sizeof(T);
+    return n % max_vec_size;
   }
 };
 

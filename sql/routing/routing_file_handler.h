@@ -6,7 +6,8 @@
 #include <boost/archive/text_oarchive.hpp>
 #include <boost/uuid/uuid_io.hpp>
 #include <boost/uuid/uuid_serialize.hpp>
-#include <boost/serialization/unique_ptr.hpp>
+#include <boost/serialization/shared_ptr.hpp>
+#include <boost/serialization/vector.hpp>
 #include <fstream>
 #include <iostream>
 #include <memory>
@@ -17,11 +18,14 @@ class routing_file_handler {
   typedef unsigned long ulong;
  public:
   static std::string onDiskLocation;
-  static std::shared_ptr<T> readNth(ulong, boost::uuids::uuid);
+  //static std::shared_ptr<T> readNth(ulong, boost::uuids::uuid);
+  static std::vector<T> readVectorWithNumber(size_t, boost::uuids::uuid);
   static std::vector<std::shared_ptr<T>> readNFirst(ulong,
                                          boost::uuids::uuid);
 
-  static void push(const T&, boost::uuids::uuid id, bool = false);
+  //static void push(const T&, boost::uuids::uuid id, bool = false);
+  //static void push(std::shared_ptr<T>, boost::uuids::uuid id, bool = false);
+  static void pushVectorWithIdx(size_t, std::vector<T>, boost::uuids::uuid id);
   static void deleteNth(ulong n, ulong totalN, boost::uuids::uuid);
   static void deleteAfterN(ulong, boost::uuids::uuid);
   static void deleteBetweenMandN(ulong m, ulong n, ulong total, boost::uuids::uuid id);
@@ -33,22 +37,35 @@ std::string routing_file_handler<T>::onDiskLocation =
     "/var/tmp/mysql_routing/";
 
 template <typename T>
-std::shared_ptr<T> routing_file_handler<T>::readNth(ulong n,
+std::vector<T> routing_file_handler<T>::readVectorWithNumber(size_t file_nr,
                                                     boost::uuids::uuid id) {
-  // char const *onDiskLocation = "/var/tmp/mysql_routing_spillfile";
   std::ifstream file;
-  file.open(onDiskLocation + to_string(id), std::ios::in);
-  boost::archive::text_iarchive ia(file);
-  auto t = std::make_shared<T>();
+  auto location = onDiskLocation + to_string(id) + "-" + std::to_string(file_nr);
+  std::vector<T> vec;
 
-  if (file && file.is_open()) {
-    ia >> t;
-    for (ulong i = 0; i < n; i++) {
-      ia >> t;
-    }
+  file.open(location, std::ios::in);
+  if (file.is_open()) {
+    boost::archive::text_iarchive ia(file);
+    ia >> vec;
   }
-  file.close();
-  return t;
+  return vec;
+}
+
+template <typename T>
+void routing_file_handler<T>::pushVectorWithIdx(size_t file_nr, std::vector<T> vec, boost::uuids::uuid id) {
+  // char const *onDiskLocation = "/var/tmp/mysql_routing_spillfile";
+  std::ofstream file;
+
+  auto location = onDiskLocation + to_string(id) + "-" + std::to_string(file_nr);
+
+  remove(location.c_str());
+
+  file.open(location, std::ios::out);
+
+  boost::archive::text_oarchive oa(file);
+  oa << vec;
+
+  // File and archive closes when they go out of scope
 }
 
 template <typename T>
@@ -67,8 +84,9 @@ std::vector<std::shared_ptr<T>> routing_file_handler<T>::readNFirst(
   return vec;
 }
 
+/*
 template <typename T>
-void routing_file_handler<T>::push(const T& element, boost::uuids::uuid id,
+void routing_file_handler<T>::push(std::shared_ptr<T> element, boost::uuids::uuid id,
                                    bool removeExisting) {
   // char const *onDiskLocation = "/var/tmp/mysql_routing_spillfile";
   std::ofstream file;
@@ -77,13 +95,15 @@ void routing_file_handler<T>::push(const T& element, boost::uuids::uuid id,
   if (removeExisting) {
     remove(location.c_str());
   }
-  file.open(location, std::ios::out);
+  file.open(location, std::ios::out | std::ios::app);
 
   boost::archive::text_oarchive oa(file);
   oa << element;
 
   file.close();
 }
+*/
+
 
 template <typename T>
 void routing_file_handler<T>::deleteNth(ulong n, ulong totalN, boost::uuids::uuid id) {
@@ -94,7 +114,7 @@ void routing_file_handler<T>::deleteNth(ulong n, ulong totalN, boost::uuids::uui
   auto tmpFilePath = onDiskLocation + to_string(id) + "__TMP";
 
   inFile.open(origFilePath, std::ios::in);
-  tmpFile.open(tmpFilePath, std::ios::out);
+  tmpFile.open(tmpFilePath, std::ios::out | std::ios::app);
   boost::archive::text_iarchive ia(inFile);
   boost::archive::text_oarchive tmpa(tmpFile);
 
@@ -125,7 +145,7 @@ void routing_file_handler<T>::deleteAfterN(ulong n, boost::uuids::uuid id) {
   auto tmpFilePath = onDiskLocation + to_string(id) + "__TMP";
 
   inFile.open(origFilePath, std::ios::in);
-  tmpFile.open(tmpFilePath, std::ios::out);
+  tmpFile.open(tmpFilePath, std::ios::out | std::ios::app);
   boost::archive::text_iarchive ia(inFile);
   boost::archive::text_oarchive tmpa(tmpFile);
 
@@ -151,7 +171,7 @@ void routing_file_handler<T>::deleteBetweenMandN(ulong m, ulong n, ulong totalN,
   auto tmpFilePath = onDiskLocation + to_string(id) + "__TMP";
 
   inFile.open(origFilePath, std::ios::in);
-  tmpFile.open(tmpFilePath, std::ios::out);
+  tmpFile.open(tmpFilePath, std::ios::out | std::ios::app);
   boost::archive::text_iarchive ia(inFile);
   boost::archive::text_oarchive tmpa(tmpFile);
 
@@ -172,7 +192,15 @@ void routing_file_handler<T>::deleteBetweenMandN(ulong m, ulong n, ulong totalN,
 
 template <typename T>
 void routing_file_handler<T>::deleteFileForId(boost::uuids::uuid id) {
-  auto filePath = onDiskLocation + to_string(id);
-  remove(filePath.c_str());
+  std::ifstream file;
+  size_t i = 0;
+  auto filePath = onDiskLocation + to_string(id) + "-" + std::to_string(i);
+  file.open(filePath, std::ios::in);
+  while(file.is_open()) {
+    remove(filePath.c_str());
+    i++;
+    filePath = onDiskLocation + to_string(id) + "-" + std::to_string(i);
+    file.open(filePath);
+  }
 }
 }  // namespace routing

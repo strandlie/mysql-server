@@ -27,9 +27,9 @@ class Graph_router {
   /*
    * Typedefs
    */
-  typedef b::adjacency_list<b::vecS_profiled, b::vecS_profiled, b::undirectedS,
-                            b::no_property,
-                            b::property<b::edge_weight_t, double>>
+  typedef b::adjacency_list<
+      b::vecS, b::vecS_profiled, b::undirectedS, b::no_property,
+      b::property<b::edge_weight_t, double>, b::no_property, b::vecS>//, b::no_property, b::vecS_profiled>
       Graph;
   typedef b::property_map<Graph, b::vertex_index_t>::type IndexMap;
   typedef std::pair<long, long> Edge;
@@ -52,7 +52,6 @@ class Graph_router {
   Graph_router(std::vector<Edge> edges, std::vector<double> weights);
 
   Graph_router();
-
 
   static Vertex null_vertex() { return b::graph_traits<Graph>::null_vertex(); }
   Vertex getSource(unsigned long id);
