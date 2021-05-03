@@ -30,7 +30,7 @@ class routing_iterator
   // This one is needed by the adjacency_list implementation
   routing_iterator() {}
 
-  routing_iterator(std::vector<T> &vec, boost::uuids::uuid rvector_id,
+  routing_iterator(std::vector<T, Routing_allocator<T>> &vec, boost::uuids::uuid rvector_id,
                    size_t currentFileIdxInMem, size_t total_size,
                    size_t ram_limit)
       : vec_(vec),
@@ -40,7 +40,7 @@ class routing_iterator
         totalSize(total_size),
         ram_limit_(ram_limit) {}
 
-  routing_iterator(std::vector<T> &vec, size_t size,
+  routing_iterator(std::vector<T, Routing_allocator<T>> &vec, size_t size,
                    boost::uuids::uuid rvector_id, size_t currentFileIdxInMem,
                    size_t total_size, size_t ram_limit)
       : vec_(vec),
@@ -71,7 +71,7 @@ class routing_iterator
  private:
   friend class boost::iterator_core_access;
 
-  std::vector<T> vec_;
+  std::vector<T, Routing_allocator<T>> vec_;
   size_t pointer_;
   boost::uuids::uuid rvector_id_;
   size_t currentFileIdxInMem;
@@ -135,7 +135,7 @@ class const_routing_iterator
   // This one is needed by the adjacency_list implementation
   const_routing_iterator() {}
 
-  const_routing_iterator(std::vector<T> &vec, boost::uuids::uuid rvector_id,
+  const_routing_iterator(std::vector<T, Routing_allocator<T>> &vec, boost::uuids::uuid rvector_id,
                          size_t currentFileIdxInMem, size_t total_size,
                          size_t ram_limit)
       : vec_(vec),
@@ -145,7 +145,7 @@ class const_routing_iterator
         totalSize(total_size),
         ram_limit_(ram_limit) {}
 
-  const_routing_iterator(std::vector<T> &vec, size_t size,
+  const_routing_iterator(std::vector<T, Routing_allocator<T>> &vec, size_t size,
                          boost::uuids::uuid rvector_id,
                          size_t currentFileIdxInMem, size_t total_size,
                          size_t ram_limit)
@@ -177,7 +177,7 @@ class const_routing_iterator
  private:
   friend class boost::iterator_core_access;
 
-  std::vector<T> const vec_;
+  std::vector<T, Routing_allocator<T>> const vec_;
   int pointer_;
   boost::uuids::uuid rvector_id_;
   size_t currentFileIdxInMem;

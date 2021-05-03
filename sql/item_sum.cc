@@ -6307,22 +6307,24 @@ my_decimal *Item_sum_route::val_decimal(my_decimal *val) { DBUG_TRACE; }
 String *Item_sum_route::val_str(String *str) {
   if (aggr) aggr->endup();
   DBUG_LOG("Routing", "Num edges: " << edges.size());
-  Graph_router gr = Graph_router(edges, weights);
-  Graph_router::Vertex s = gr.getSource(get_long_arg(src_node_id));
-  String* value;
-  if (s != Graph_router::null_vertex()) {
-    gr.executeDijkstra(s);
-    std::vector<std::pair<Graph_router::Vertex, double>> dists =
-        gr.getDistances();
-    std::vector<Graph_router::Vertex> preds =
-        gr.getPredecessorsTo(get_long_arg(tgt_node_id));
-    value = gr.producePredString(preds, get_long_arg(tgt_node_id));
-  } else {
-    // Empty string
-    value = new (current_thd->mem_root)
-        String("", 5, &my_charset_utf8mb4_general_ci);
+  {
+    Graph_router gr = Graph_router(edges, weights);
+    Graph_router::Vertex s = gr.getSource(get_long_arg(src_node_id));
+    if (s != Graph_router::null_vertex()) {
+      gr.executeDijkstra(s);
+      std::vector<std::pair<Graph_router::Vertex, double>> dists =
+          gr.getDistances();
+      std::vector<Graph_router::Vertex> preds =
+          gr.getPredecessorsTo(get_long_arg(tgt_node_id));
+      str->set_ascii("", 0);
+      gr.producePredString(str, preds, get_long_arg(tgt_node_id));
+    } else {
+      // Empty string
+      str->set_ascii("", 0);
+    }
   }
-  return value;
+  DBUG_LOG("Routing:", to_string(*str));
+  return str;
 }
 
 void Item_sum_route::update_field() {

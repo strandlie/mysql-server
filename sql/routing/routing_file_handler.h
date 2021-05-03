@@ -19,13 +19,13 @@ class routing_file_handler {
  public:
   static std::string onDiskLocation;
   //static std::shared_ptr<T> readNth(ulong, boost::uuids::uuid);
-  static std::vector<T> readVectorWithNumber(size_t, boost::uuids::uuid);
+  static std::vector<T, Routing_allocator<T>> readVectorWithNumber(size_t, boost::uuids::uuid);
   static std::vector<std::shared_ptr<T>> readNFirst(ulong,
                                          boost::uuids::uuid);
 
   //static void push(const T&, boost::uuids::uuid id, bool = false);
   //static void push(std::shared_ptr<T>, boost::uuids::uuid id, bool = false);
-  static void pushVectorWithIdx(size_t, std::vector<T>, boost::uuids::uuid id);
+  static void pushVectorWithIdx(size_t, std::vector<T, Routing_allocator<T>>, boost::uuids::uuid id);
   static void deleteNth(ulong n, ulong totalN, boost::uuids::uuid);
   static void deleteAfterN(ulong, boost::uuids::uuid);
   static void deleteBetweenMandN(ulong m, ulong n, ulong total, boost::uuids::uuid id);
@@ -37,11 +37,11 @@ std::string routing_file_handler<T>::onDiskLocation =
     "/var/tmp/mysql_routing/";
 
 template <typename T>
-std::vector<T> routing_file_handler<T>::readVectorWithNumber(size_t file_nr,
+std::vector<T, Routing_allocator<T>> routing_file_handler<T>::readVectorWithNumber(size_t file_nr,
                                                     boost::uuids::uuid id) {
   std::ifstream file;
   auto location = onDiskLocation + to_string(id) + "-" + std::to_string(file_nr);
-  std::vector<T> vec;
+  std::vector<T, Routing_allocator<T>> vec;
 
   file.open(location, std::ios::in);
   if (file.is_open()) {
@@ -52,7 +52,7 @@ std::vector<T> routing_file_handler<T>::readVectorWithNumber(size_t file_nr,
 }
 
 template <typename T>
-void routing_file_handler<T>::pushVectorWithIdx(size_t file_nr, std::vector<T> vec, boost::uuids::uuid id) {
+void routing_file_handler<T>::pushVectorWithIdx(size_t file_nr, std::vector<T, Routing_allocator<T>> vec, boost::uuids::uuid id) {
   // char const *onDiskLocation = "/var/tmp/mysql_routing_spillfile";
   std::ofstream file;
 

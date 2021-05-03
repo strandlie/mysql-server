@@ -60,5 +60,5 @@ class Graph_router {
   std::pair<Vertex, double> getDistancesTo(unsigned long id);
   std::vector<Vertex> getPredecessorsTo(unsigned long id);
   String *produceDistanceString(std::vector<std::pair<Vertex, double>>);
-  String *producePredString(std::vector<Vertex>, long);
+  void producePredString(String*, std::vector<Vertex>, long);
 };

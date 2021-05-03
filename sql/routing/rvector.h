@@ -31,7 +31,7 @@ class RVector {
   boost::uuids::uuid id;
 
   // Contains the current working set
-  std::vector<T> vec_;
+  std::vector<T, Routing_allocator<T>> vec_;
   ulonglong ram_limit_;
   ulonglong totalSize;
   size_t currentFileIdxInMem;
@@ -349,6 +349,7 @@ class RVector {
       return;
     }
     routing_file_handler<T>::pushVectorWithIdx(currentFileIdxInMem, vec_, id);
+    vec_.clear();
     vec_ = routing_file_handler<T>::readVectorWithNumber(new_idx, id);
     currentFileIdxInMem = new_idx;
   }

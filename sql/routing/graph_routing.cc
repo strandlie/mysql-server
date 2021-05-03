@@ -5,6 +5,7 @@
 #include "graph_routing.h"
 #include <vector>
 #include <boost/graph/dijkstra_shortest_paths.hpp>
+#include <boost/graph/astar_search.hpp>
 
 class Vertex;
 
@@ -83,9 +84,9 @@ std::vector<Graph_router::Vertex> Graph_router::getPredecessorsTo(unsigned long 
         current = parent;
         parent = predecessors[current];
         if(parent == graph_traits<Graph>::null_vertex()) {
-          DBUG_LOG("Routing", "parent(" << current << ") = no parent");
+          //DBUG_LOG("Routing", "parent(" << current << ") = no parent");
         } else {
-          DBUG_LOG("Routing", "parent(" << current << ") = " << parent);
+          //DBUG_LOG("Routing", "parent(" << current << ") = " << parent);
           vec.push_back(parent);
         }
       } while(parent != current && parent != graph_traits<Graph>::null_vertex());
@@ -101,10 +102,10 @@ std::vector<std::pair<Graph_router::Vertex, double>> Graph_router::getDistances(
     return vec;
   }
 
-  DBUG_LOG("Routing", "Distances from start vertex: " << currentSource);
+  //DBUG_LOG("Routing", "Distances from start vertex: " << currentSource);
   b::graph_traits<Graph>::vertex_iterator vi;
   for(vi = vertices(G).first; vi != vertices(G).second; ++vi) {
-    DBUG_LOG("Routing", "distance(" << index(*vi) << ") = " << distances[*vi]);
+    //DBUG_LOG("Routing", "distance(" << index(*vi) << ") = " << distances[*vi]);
     vec.emplace_back(index(*vi), distances[*vi]);
   }
   return vec;
@@ -124,7 +125,7 @@ std::pair<Graph_router::Vertex, double> Graph_router::getDistancesTo(unsigned lo
   std::pair<vertex_iter, vertex_iter> vp = vertices(G);
   for ( ; vp.first != vp.second; ++vp.first) {
     if (*vp.first == id) {
-      DBUG_LOG("Routing", "distance(" << *vp.first << ") = " << distances[*vp.first]);
+      //DBUG_LOG("Routing", "distance(" << *vp.first << ") = " << distances[*vp.first]);
       return std::pair<Graph_router::Vertex, double>(*vp.first, distances[*vp.first]);
     }
   }
@@ -136,19 +137,19 @@ String *Graph_router::produceDistanceString(std::vector<std::pair<Vertex, double
 
 }
 
-String *Graph_router::producePredString(std::vector<Vertex> preds, long tgt_node_id) {
+void Graph_router::producePredString(String *str, std::vector<Vertex> preds, long tgt_node_id) {
 
-  String *value = new (current_thd->mem_root)
-      String("", 5, &my_charset_utf8mb4_general_ci);
   std::vector<Graph_router::Vertex>::reverse_iterator rit = preds.rbegin();
-  value->append("Source: \n");
+  str->append("Source: \n");
+  DBUG_LOG("Routing", "Source: \n");
   for(; rit != preds.rend(); ++rit) {
-    value->append("\t|--> ");
-    value->append_longlong(*rit);
-    value->append("\n");
+    str->append("\t|--> ");
+    DBUG_LOG("Routing", "\t|--> " << *rit << "\n");
+    str->append_longlong(*rit);
+    str->append("\n");
   }
-  value->append("Target: ");
-  value->append_longlong(tgt_node_id);
-  value->append("\n");
-  return value;
+  str->append("Target: ");
+  str->append_longlong(tgt_node_id);
+  DBUG_LOG("Routing", "Target: " << tgt_node_id);
+  str->append("\n");
 }
