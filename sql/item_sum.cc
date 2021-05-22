@@ -66,6 +66,7 @@
 #include "sql/parse_tree_nodes.h"      // PT_order_list
 #include "sql/parser_yystype.h"
 #include "sql/routing/graph_routing.h"
+#include "sql/routing/routing_stats.h"
 #include "sql/sql_array.h"
 #include "sql/sql_class.h"  // THD
 #include "sql/sql_const.h"
@@ -6210,6 +6211,7 @@ bool Item_sum_route::add() {
       return true;
     }
   }
+  RoutingStats::numRowsInGraph += 1;
 
   if (source_point_valid() && target_point_valid()) {
     // Coordinates for both source and target have been found in an earlier
@@ -6306,7 +6308,6 @@ my_decimal *Item_sum_route::val_decimal(my_decimal *val) { DBUG_TRACE; }
 
 String *Item_sum_route::val_str(String *str) {
   if (aggr) aggr->endup();
-  DBUG_LOG("Routing", "Num edges: " << edges.size());
   {
     Graph_router gr = Graph_router(edges, weights);
     Graph_router::Vertex s = gr.getSource(get_long_arg(src_node_id));
@@ -6323,7 +6324,7 @@ String *Item_sum_route::val_str(String *str) {
       str->set_ascii("", 0);
     }
   }
-  DBUG_LOG("Routing:", to_string(*str));
+  RoutingStats::reset();
   return str;
 }
 
@@ -6400,8 +6401,6 @@ void Item_sum_route::add_edge_if_either_end_is_within_radius(
   if (edge_source_distance < radius ||
    edge_target_distance < radius) {
     // One of them is within the radius
-    Edge e(get_long_arg(edge_src_node_id), get_long_arg(edge_tgt_node_id));
-    edges.push_back(e);
-    weights.push_back(get_dbl_arg(edge_weight));
+    add_edge();
   }
 }

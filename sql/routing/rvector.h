@@ -1,6 +1,7 @@
 
 #include <algorithm>
 #include <boost/graph/adjacency_list.hpp>
+#include <exception>
 #include <iostream>
 #include <memory>
 #include <vector>
@@ -10,6 +11,7 @@
 #include "sql/sql_class.h"
 
 #include "sql/routing/routing_iterator.h"
+#include "sql/routing/routing_stats.h"
 
 #include <boost/serialization/shared_ptr.hpp>
 #include <boost/serialization/split_free.hpp>
@@ -32,6 +34,7 @@ class RVector {
 
   // Contains the current working set
   std::vector<T, Routing_allocator<T>> vec_;
+  routing_file_handler<T> fh;
   ulonglong ram_limit_;
   ulonglong totalSize;
   size_t currentFileIdxInMem;
@@ -63,7 +66,9 @@ class RVector {
         vec_(r_vector.vec_),
         ram_limit_(r_vector.ram_limit_),
         totalSize(r_vector.totalSize),
-        currentFileIdxInMem(r_vector.currentFileIdxInMem) {}
+        currentFileIdxInMem(r_vector.currentFileIdxInMem) {
+    fh = routing_file_handler<T>(id);
+  }
 
   // Move constructor
   // This doesn't actually move anything, since all members are values
@@ -73,6 +78,7 @@ class RVector {
         ram_limit_(source.ram_limit_),
         totalSize(source.totalSize),
         currentFileIdxInMem(source.currentFileIdxInMem) {
+    fh = routing_file_handler<T>(id);
     /*
     source.ram_limit_ = nullptr;
     source.onDisk = nullptr;
@@ -86,10 +92,12 @@ class RVector {
         vec_(),
         ram_limit_(ram_limit),
         totalSize{0},
-        currentFileIdxInMem(0) {}
+        currentFileIdxInMem(0) {
+    fh = routing_file_handler<T>(id);
+  }
 
   // Default constructor
-  RVector() : id(boost::uuids::random_generator()()), vec_() {
+  RVector() : id(boost::uuids::random_generator()()), vec_(), fh(id) {
     if (current_thd) {
       ulonglong ram_limitation =
           fmin(current_thd->variables.tmp_table_size,
@@ -106,7 +114,16 @@ class RVector {
   }
 
   // Destructor
-  ~RVector() { routing_file_handler<T>::deleteFileForId(id); }
+  ~RVector() {
+    /*
+     * Don't delete for experiment
+    try {
+      fh.deleteFiles();
+    } catch (std::exception e) {
+      DBUG_LOG("Routing", e.what());
+    }
+     */
+  }
   /*
    *** END *** CONSTRUCTORS
    */
@@ -348,9 +365,10 @@ class RVector {
     if (new_idx == currentFileIdxInMem) {
       return;
     }
-    routing_file_handler<T>::pushVectorWithIdx(currentFileIdxInMem, vec_, id);
-    vec_.clear();
-    vec_ = routing_file_handler<T>::readVectorWithNumber(new_idx, id);
+    RoutingStats::numSwaps += 1;
+    fh.pushVectorWithIdx(currentFileIdxInMem, vec_);
+    vec_ = std::vector<T, Routing_allocator<T>>();
+    vec_ = fh.readVectorWithNumber(new_idx);
     currentFileIdxInMem = new_idx;
   }
 
@@ -533,7 +551,7 @@ void serialize(Archive &ar, stored_ra_iter_t &data,
                __attribute__((unused)) const unsigned int version) {
   ar &data.m_target;
   ar &data.m_i;
-  ar &data.m_vec;
+  //ar &data.m_vec;
 }
 
 typedef boost::list_edge<
@@ -573,7 +591,54 @@ boost::graph_detail::vector_tag container_category(
   return boost::graph_detail::vector_tag();
 }
 
-
 }  // namespace boost
+
+typedef boost::adjacency_list<
+    boost::vecS, boost::vecS_profiled, boost::undirectedS, boost::no_property,
+    boost::property<boost::edge_weight_t, double>, boost::no_property,
+    boost::vecS>  //, b::no_property, b::vecS_profiled>
+    Graph;
+
+typedef boost::detail::adj_list_gen<
+    Graph, boost::vecS_profiled, boost::vecS, boost::undirectedS,
+    boost::no_property, boost::property<boost::edge_weight_t, double>,
+    boost::no_property, boost::vecS>
+    alg;
+
+template <>
+inline void routing::RVector<alg::config::stored_vertex>::changeWorkingSet(
+    size_t new_idx) {
+  if (new_idx == currentFileIdxInMem) {
+    return;
+  }
+  RoutingStats::numSwaps += 1;
+  std::vector<boost::list_edge<unsigned long,
+                               boost::property<boost::edge_weight_t, double>>>
+      *edge_vec_ptr = nullptr;
+  bool done = false;
+  for (auto & it : vec_) {
+    if(done) {
+      break;
+    }
+    for (auto & m_out_edge : it.m_out_edges) {
+      if (done) {
+        break;
+      }
+      edge_vec_ptr = m_out_edge.m_vec;
+      done = true;
+    }
+  }
+  fh.pushVectorWithIdx(currentFileIdxInMem, vec_);
+  vec_.clear();
+  fh.readVectorWithNumber(new_idx, vec_);
+  DBUG_ASSERT(edge_vec_ptr != nullptr);
+  for(auto & it : vec_) {
+    for(auto & m_out_edge : it.m_out_edges) {
+      //delete m_out_edge.m_vec;
+      m_out_edge.m_vec = edge_vec_ptr;
+    }
+  }
+  currentFileIdxInMem = new_idx;
+}
 
 #endif  // MYSQL_RVECTOR_H

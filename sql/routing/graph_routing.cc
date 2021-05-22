@@ -6,6 +6,7 @@
 #include <vector>
 #include <boost/graph/dijkstra_shortest_paths.hpp>
 #include <boost/graph/astar_search.hpp>
+#include "routing_stats.h"
 
 class Vertex;
 
@@ -14,6 +15,7 @@ Graph_router::Graph_router(std::vector<Edge> edges, std::vector<double> weights)
     my_error(ER_WRONG_PARAMETERS_TO_PROCEDURE, MYF(0), "Graph_router");
     return;
   }
+  RoutingStats::numEdgesAdded += edges.size();
   for (std::string::size_type i = 0; i < edges.size(); ++i) {
     add_edge(edges[i].first, edges[i].second, EdgeWeightProperty(weights[i]),
              G);
@@ -141,15 +143,29 @@ void Graph_router::producePredString(String *str, std::vector<Vertex> preds, lon
 
   std::vector<Graph_router::Vertex>::reverse_iterator rit = preds.rbegin();
   str->append("Source: \n");
-  DBUG_LOG("Routing", "Source: \n");
   for(; rit != preds.rend(); ++rit) {
     str->append("\t|--> ");
-    DBUG_LOG("Routing", "\t|--> " << *rit << "\n");
     str->append_longlong(*rit);
     str->append("\n");
   }
   str->append("Target: ");
   str->append_longlong(tgt_node_id);
-  DBUG_LOG("Routing", "Target: " << tgt_node_id);
   str->append("\n");
+
+  str->append("Num swaps: ");
+  str->append_longlong(RoutingStats::numSwaps);
+  str->append("\n");
+  str->append("Num bytes read: ");
+  str->append_longlong(RoutingStats::numBytesRead);
+  str->append("\n");
+  str->append("Num bytes written: ");
+  str->append_longlong(RoutingStats::numBytesWritten);
+  str->append("\n");
+  str->append("Num edges in graph: ");
+  str->append_longlong(RoutingStats::numRowsInGraph);
+  str->append("\n");
+  str->append("Num edges added: ");
+  str->append_longlong(RoutingStats::numEdgesAdded);
+  str->append("\n");
+
 }

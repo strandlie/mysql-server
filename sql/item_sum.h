@@ -2862,7 +2862,7 @@ public:
 
   double get_dbl_arg(arg_cat category) {
     switch(category) {
-      case edge_weight:   // Invalid lat_long is also invalid weight
+      case edge_weight:
         return args[2]->val_real();
       case source_x_lng:
         return args[3]->val_real();
@@ -2872,7 +2872,7 @@ public:
         return args[5]->val_real();
       case target_y_lat:
         return args[6]->val_real();
-      default:
+      default: // Invalid lat_long is also invalid weight
         return invalid_lat_lng;
     }
   }
