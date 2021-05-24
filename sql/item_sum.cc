@@ -6211,14 +6211,14 @@ bool Item_sum_route::add() {
       return true;
     }
   }
-  RoutingStats::numRowsInGraph += 1;
-
+  /*
   if (source_point_valid() && target_point_valid()) {
     // Coordinates for both source and target have been found in an earlier
     // run. Only add this new point if it is within defined bounding box
     fix_midpoint_and_radius();
-    add_edge_if_either_end_is_within_radius(get_dbl_arg(source_x_lng), get_dbl_arg(source_y_lat),
-                                            get_dbl_arg(target_x_lng), get_dbl_arg(target_y_lat));
+    add_edge_if_either_end_is_within_radius(
+        get_dbl_arg(edge_source_x_lng), get_dbl_arg(edge_source_y_lat),
+        get_dbl_arg(edge_target_x_lng), get_dbl_arg(edge_target_y_lat));
     return false;
 
   } else if (source_point_valid() && !target_point_valid()) {
@@ -6226,20 +6226,22 @@ bool Item_sum_route::add() {
 
     long target_id = get_long_arg(tgt_node_id);
     if (target_id == get_long_arg(edge_src_node_id)) {
-      target_long = get_dbl_arg(source_x_lng);
-      target_lati = get_dbl_arg(source_y_lat);
+      target_long = get_dbl_arg(edge_source_x_lng);
+      target_lati = get_dbl_arg(edge_source_y_lat);
       fix_midpoint_and_radius();
-      add_edge_if_either_end_is_within_radius(get_dbl_arg(source_x_lng), get_dbl_arg(source_y_lat),
-                                              get_dbl_arg(target_x_lng), get_dbl_arg(target_y_lat));
+      add_edge_if_either_end_is_within_radius(
+          get_dbl_arg(edge_source_x_lng), get_dbl_arg(edge_source_y_lat),
+          get_dbl_arg(edge_target_x_lng), get_dbl_arg(edge_target_y_lat));
       return false;
     }
 
     if (target_id == get_long_arg(edge_tgt_node_id)) {
-      target_long = get_dbl_arg(target_x_lng);
-      target_lati = get_dbl_arg(target_y_lat);
+      target_long = get_dbl_arg(edge_target_x_lng);
+      target_lati = get_dbl_arg(edge_target_y_lat);
       fix_midpoint_and_radius();
-      add_edge_if_either_end_is_within_radius(get_dbl_arg(source_x_lng), get_dbl_arg(source_y_lat),
-                                              get_dbl_arg(target_x_lng), get_dbl_arg(target_y_lat));
+      add_edge_if_either_end_is_within_radius(
+          get_dbl_arg(edge_source_x_lng), get_dbl_arg(edge_source_y_lat),
+          get_dbl_arg(edge_target_x_lng), get_dbl_arg(edge_target_y_lat));
       return false;
     }
 
@@ -6248,52 +6250,56 @@ bool Item_sum_route::add() {
 
     long source_id = get_long_arg(src_node_id);
     if (source_id == get_long_arg(edge_src_node_id)) {
-      source_long = get_dbl_arg(source_x_lng);
-      source_lati = get_dbl_arg(source_y_lat);
+      source_long = get_dbl_arg(edge_source_x_lng);
+      source_lati = get_dbl_arg(edge_source_y_lat);
       fix_midpoint_and_radius();
-      add_edge_if_either_end_is_within_radius(get_dbl_arg(source_x_lng), get_dbl_arg(source_y_lat),
-                                              get_dbl_arg(target_x_lng), get_dbl_arg(target_y_lat));
+      add_edge_if_either_end_is_within_radius(
+          get_dbl_arg(edge_source_x_lng), get_dbl_arg(edge_source_y_lat),
+          get_dbl_arg(edge_target_x_lng), get_dbl_arg(edge_target_y_lat));
       return false;
     }
 
     if (source_id == get_long_arg(edge_tgt_node_id)) {
-      source_long = get_dbl_arg(target_x_lng);
-      source_lati = get_dbl_arg(target_y_lat);
+      source_long = get_dbl_arg(edge_target_x_lng);
+      source_lati = get_dbl_arg(edge_target_y_lat);
       fix_midpoint_and_radius();
-      add_edge_if_either_end_is_within_radius(get_dbl_arg(source_x_lng), get_dbl_arg(source_y_lat),
-                                              get_dbl_arg(target_x_lng), get_dbl_arg(target_y_lat));
+      add_edge_if_either_end_is_within_radius(
+          get_dbl_arg(edge_source_x_lng), get_dbl_arg(edge_source_y_lat),
+          get_dbl_arg(edge_target_x_lng), get_dbl_arg(edge_target_y_lat));
       return false;
     }
 
   } else {
-    // We have not found coordinates for either
+  }
+  */
+  if (!(source_point_valid() && target_point_valid())) {
     // Assume we don't find both for one edge. If so,
     // it will be caught on the next row
 
     long source_id = get_long_arg(src_node_id);
     long target_id = get_long_arg(tgt_node_id);
     if (source_id == get_long_arg(edge_src_node_id)) {
-      source_long = get_dbl_arg(source_x_lng);
-      source_lati = get_dbl_arg(source_y_lat);
+      source_long = get_dbl_arg(edge_source_x_lng);
+      source_lati = get_dbl_arg(edge_source_y_lat);
     }
 
     if (source_id == get_long_arg(edge_tgt_node_id)) {
-      source_long = get_dbl_arg(target_x_lng);
-      source_lati = get_dbl_arg(target_y_lat);
+      source_long = get_dbl_arg(edge_target_x_lng);
+      source_lati = get_dbl_arg(edge_target_y_lat);
     }
 
     if (target_id == get_long_arg(edge_src_node_id)) {
-      target_long = get_dbl_arg(source_x_lng);
-      target_lati = get_dbl_arg(source_y_lat);
+      target_long = get_dbl_arg(edge_source_x_lng);
+      target_lati = get_dbl_arg(edge_source_y_lat);
     }
 
     if (target_id == get_long_arg(edge_tgt_node_id)) {
-      target_long = get_dbl_arg(target_x_lng);
-      target_lati = get_dbl_arg(target_y_lat);
+      target_long = get_dbl_arg(edge_target_x_lng);
+      target_lati = get_dbl_arg(edge_target_y_lat);
     }
   }
 
-  // If this is hit, add the edge because we could not rule it out
+  RoutingStats::numRowsInGraph += 1;
   add_edge();
   return false;
 }
@@ -6309,7 +6315,11 @@ my_decimal *Item_sum_route::val_decimal(my_decimal *val) { DBUG_TRACE; }
 String *Item_sum_route::val_str(String *str) {
   if (aggr) aggr->endup();
   {
-    Graph_router gr = Graph_router(edges, weights);
+    Edge source_and_target(std::pair<long, long>(get_long_arg(src_node_id),
+                                                 get_long_arg(tgt_node_id)),
+                           std::pair<double, double>(source_long, source_lati),
+                           std::pair<double, double>(target_long, target_lati));
+    Graph_router gr = Graph_router(edges, weights, source_and_target);
     Graph_router::Vertex s = gr.getSource(get_long_arg(src_node_id));
     if (s != Graph_router::null_vertex()) {
       gr.executeDijkstra(s);
@@ -6348,7 +6358,12 @@ void Item_sum_route::clear() {
 }
 
 void Item_sum_route::add_edge() {
-  Edge e(get_long_arg(edge_src_node_id), get_long_arg(edge_tgt_node_id));
+  Edge e(std::pair<long, long>(get_long_arg(edge_src_node_id),
+                               get_long_arg(edge_tgt_node_id)),
+         std::pair<double, double>(get_dbl_arg(edge_source_x_lng),
+                                   get_dbl_arg(edge_source_y_lat)),
+         std::pair<double, double>(get_dbl_arg(edge_target_x_lng),
+                                   get_dbl_arg(edge_target_y_lat)));
   edges.push_back(e);
   weights.push_back(get_dbl_arg(edge_weight));
 }
@@ -6393,13 +6408,16 @@ void Item_sum_route::add_edge_if_either_end_is_within_radius(
   GeographicPoint route_mid_point = GeographicPoint(mid_long, mid_lati);
   GeographicPoint edge_source_point = GeographicPoint(source_long, source_lat);
   GeographicPoint edge_target_point = GeographicPoint(target_long, target_lat);
-  double edge_source_distance_and = boost::geometry::distance(edge_source_point, route_mid_point, andoyer);
-  double edge_target_distance_and = boost::geometry::distance(edge_target_point, route_mid_point, andoyer);
-  double edge_source_distance = boost::geometry::distance(edge_source_point, route_mid_point);
-  double edge_target_distance = boost::geometry::distance(edge_target_point, route_mid_point);
+  double edge_source_distance_and =
+      boost::geometry::distance(edge_source_point, route_mid_point, andoyer);
+  double edge_target_distance_and =
+      boost::geometry::distance(edge_target_point, route_mid_point, andoyer);
+  double edge_source_distance =
+      boost::geometry::distance(edge_source_point, route_mid_point);
+  double edge_target_distance =
+      boost::geometry::distance(edge_target_point, route_mid_point);
 
-  if (edge_source_distance < radius ||
-   edge_target_distance < radius) {
+  if (edge_source_distance < radius || edge_target_distance < radius) {
     // One of them is within the radius
     add_edge();
   }

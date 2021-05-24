@@ -2790,7 +2790,8 @@ class Item_sum_route final : public Item_sum_num {
 
  private:
   String m_tmp;
-  typedef std::pair<long, long> Edge;
+  // Source-target, source long-lat, target long-lat
+  typedef std::tuple<std::pair<long, long>, std::pair<double, double>, std::pair<double, double>> Edge;
 
   double source_long = invalid_lat_lng;
   double source_lati = invalid_lat_lng;
@@ -2837,10 +2838,10 @@ public:
     edge_src_node_id,
     edge_tgt_node_id,
     edge_weight,
-    source_x_lng,
-    source_y_lat,
-    target_x_lng,
-    target_y_lat,
+    edge_source_x_lng,
+    edge_source_y_lat,
+    edge_target_x_lng,
+    edge_target_y_lat,
     src_node_id,
     tgt_node_id
   };
@@ -2864,13 +2865,13 @@ public:
     switch(category) {
       case edge_weight:
         return args[2]->val_real();
-      case source_x_lng:
+      case edge_source_x_lng:
         return args[3]->val_real();
-      case source_y_lat:
+      case edge_source_y_lat:
         return args[4]->val_real();
-      case target_x_lng:
+      case edge_target_x_lng:
         return args[5]->val_real();
-      case target_y_lat:
+      case edge_target_y_lat:
         return args[6]->val_real();
       default: // Invalid lat_long is also invalid weight
         return invalid_lat_lng;

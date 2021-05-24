@@ -29,10 +29,13 @@ class Graph_router {
    */
   typedef b::adjacency_list<
       b::vecS, b::vecS_profiled, b::undirectedS, b::no_property,
-      b::property<b::edge_weight_t, double>, b::no_property, b::vecS>//, b::no_property, b::vecS_profiled>
+      b::property<b::edge_weight_t, double>, b::no_property,
+      b::vecS>  //, b::no_property, b::vecS_profiled>
       Graph;
   typedef b::property_map<Graph, b::vertex_index_t>::type IndexMap;
-  typedef std::pair<long, long> Edge;
+  typedef std::tuple<std::pair<long, long>, std::pair<double, double>,
+                     std::pair<double, double>>
+      Edge;
   typedef b::property<b::edge_weight_t, double> EdgeWeightProperty;
 
   /*
@@ -49,7 +52,7 @@ class Graph_router {
   // std::vector<Vertex, Routing_allocator<Vertex>> predecessors;
   std::vector<Vertex> predecessors;
   Vertex currentSource;
-  Graph_router(std::vector<Edge> edges, std::vector<double> weights);
+  Graph_router(std::vector<Edge> edges, std::vector<double> weights, Edge source_and_target);
 
   Graph_router();
 
@@ -60,5 +63,5 @@ class Graph_router {
   std::pair<Vertex, double> getDistancesTo(unsigned long id);
   std::vector<Vertex> getPredecessorsTo(unsigned long id);
   String *produceDistanceString(std::vector<std::pair<Vertex, double>>);
-  void producePredString(String*, std::vector<Vertex>, long);
+  void producePredString(String *, std::vector<Vertex>, long);
 };
