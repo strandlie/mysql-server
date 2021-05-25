@@ -12,6 +12,7 @@ class RoutingStats {
   static inline unsigned long long numBytesWritten = 0;
   static inline unsigned long long numRowsInGraph = 0;
   static inline unsigned long long numEdgesAdded = 0;
+  static inline unsigned long long numBufferHits = 0;
 
   static void reset() {
     RoutingStats::numSwaps = 0;

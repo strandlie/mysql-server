@@ -23,7 +23,6 @@ Graph_router::Graph_router(std::vector<Edge> edges, std::vector<double> weights,
   // Item_sum_route::add
   typedef boost::geometry::cs::geographic<boost::geometry::radian> Wgs84Coords;
   typedef boost::geometry::model::point<double, 2, Wgs84Coords> GeographicPoint;
-  typedef boost::geometry::srs::spheroid<double> SpheroidType;
 
   double mid_long = (std::get<1>(source_and_target).first +
                      std::get<2>(source_and_target).first) /
@@ -198,6 +197,12 @@ void Graph_router::producePredString(String *str, std::vector<Vertex> preds,
   str->append("Num swaps: ");
   str->append_longlong(RoutingStats::numSwaps);
   str->append("\n");
+  str->append("Num hits: ");
+  str->append_longlong(RoutingStats::numBufferHits);
+  str->append("\n");
+  str->append("Avg. hits pr. swap: ");
+  str->append_longlong(RoutingStats::numBufferHits / RoutingStats::numSwaps);
+  str->append("\n");
   str->append("Num bytes read: ");
   str->append_longlong(RoutingStats::numBytesRead);
   str->append("\n");
@@ -209,5 +214,8 @@ void Graph_router::producePredString(String *str, std::vector<Vertex> preds,
   str->append("\n");
   str->append("Num edges added: ");
   str->append_longlong(RoutingStats::numEdgesAdded);
+  str->append("\n");
+  str->append("Edges included: ");
+  str->append_longlong(RoutingStats::numEdgesAdded / RoutingStats::numRowsInGraph);
   str->append("\n");
 }

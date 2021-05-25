@@ -6211,10 +6211,11 @@ bool Item_sum_route::add() {
       return true;
     }
   }
-  /*
+  RoutingStats::numRowsInGraph += 1;
+
   if (source_point_valid() && target_point_valid()) {
     // Coordinates for both source and target have been found in an earlier
-    // run. Only add this new point if it is within defined bounding box
+    // run. Only add this new point if it is within the defined radius
     fix_midpoint_and_radius();
     add_edge_if_either_end_is_within_radius(
         get_dbl_arg(edge_source_x_lng), get_dbl_arg(edge_source_y_lat),
@@ -6270,9 +6271,7 @@ bool Item_sum_route::add() {
     }
 
   } else {
-  }
-  */
-  if (!(source_point_valid() && target_point_valid())) {
+    // We have found coordinates for neither.
     // Assume we don't find both for one edge. If so,
     // it will be caught on the next row
 
@@ -6299,7 +6298,7 @@ bool Item_sum_route::add() {
     }
   }
 
-  RoutingStats::numRowsInGraph += 1;
+  // If this is hit, add the edge because we could not rule it out
   add_edge();
   return false;
 }
