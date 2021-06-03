@@ -200,9 +200,6 @@ void Graph_router::producePredString(String *str, std::vector<Vertex> preds,
   str->append("Num hits: ");
   str->append_longlong(RoutingStats::numBufferHits);
   str->append("\n");
-  str->append("Avg. hits pr. swap: ");
-  str->append_longlong(RoutingStats::numBufferHits / RoutingStats::numSwaps);
-  str->append("\n");
   str->append("Num bytes read: ");
   str->append_longlong(RoutingStats::numBytesRead);
   str->append("\n");
@@ -214,8 +211,5 @@ void Graph_router::producePredString(String *str, std::vector<Vertex> preds,
   str->append("\n");
   str->append("Num edges added: ");
   str->append_longlong(RoutingStats::numEdgesAdded);
-  str->append("\n");
-  str->append("Edges included: ");
-  str->append_longlong(RoutingStats::numEdgesAdded / RoutingStats::numRowsInGraph);
   str->append("\n");
 }
