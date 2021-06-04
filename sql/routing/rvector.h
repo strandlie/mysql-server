@@ -363,6 +363,7 @@ class RVector {
 
   void changeWorkingSet(size_t new_idx) {
     if (new_idx == currentFileIdxInMem) {
+      RoutingStats::numBufferHits += 1;
       return;
     }
     RoutingStats::numSwaps += 1;

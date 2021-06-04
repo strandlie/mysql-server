@@ -16,6 +16,7 @@ class RoutingStats {
 
   static void reset() {
     RoutingStats::numSwaps = 0;
+    RoutingStats::numBufferHits = 0;
     RoutingStats::numBytesRead = 0;
     RoutingStats::numBytesWritten = 0;
     RoutingStats::numRowsInGraph = 0;
